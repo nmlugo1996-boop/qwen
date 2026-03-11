@@ -1,536 +1,263 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-function formatAudience(audience) {
-  if (Array.isArray(audience)) return audience.join(", ");
-  if (typeof audience === "string") return audience;
-  return "—";
+interface LoadingAnimationProps {
+  isVisible: boolean;
 }
 
-export default function ResultPreview({ draft, loading, celebration = false }) {
-  const [shouldAnimate, setShouldAnimate] = useState(false);
-  const [prevDraft, setPrevDraft] = useState(null);
-  const [imageUrl, setImageUrl] = useState(null);
-  const [imageBase64, setImageBase64] = useState(null);
-  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [imageError, setImageError] = useState(null);
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  const [loadingDots, setLoadingDots] = useState("");
-  const [loadingParticles, setLoadingParticles] = useState([]);
-  const [isDownloadingDocx, setIsDownloadingDocx] = useState(false);
+type Particle = {
+  id: number;
+  x: number;
+  y: number;
+  delay: number;
+  size: number;
+};
 
-  const header = draft?.header ?? {};
-  const blocks = draft?.blocks ?? {};
+type Stage = {
+  id: number;
+  title: string;
+  description: string;
+  icon: string;
+  threshold: number;
+};
+
+const STAGES: Stage[] = [
+  {
+    id: 1,
+    title: "Генерирую продукт",
+    description: "Собираю новую продуктовую форму внутри категории.",
+    icon: "⚙️",
+    threshold: 0
+  },
+  {
+    id: 2,
+    title: "Собираю маркетинговую логику",
+    description: "Проверяю боль, аудиторию, уникальность и сценарий потребления.",
+    icon: "🧠",
+    threshold: 28
+  },
+  {
+    id: 3,
+    title: "Формирую паспорт",
+    description: "Заполняю когнитивный, сенсорный, брендинговый и маркетинговый блоки.",
+    icon: "📋",
+    threshold: 58
+  },
+  {
+    id: 4,
+    title: "Готовлю документ",
+    description: "Финализирую структуру и собираю итоговый результат.",
+    icon: "📄",
+    threshold: 82
+  }
+];
+
+export default function LoadingAnimation({ isVisible }: LoadingAnimationProps) {
+  const [progress, setProgress] = useState<number>(0);
+  const [dots, setDots] = useState<string>("");
+  const [particles, setParticles] = useState<Particle[]>([]);
+  const [showExitFlash, setShowExitFlash] = useState<boolean>(false);
 
   useEffect(() => {
-    if (draft && !loading && draft !== prevDraft) {
-      setShouldAnimate(true);
-      setPrevDraft(draft);
-    }
-  }, [draft, loading, prevDraft]);
-
-  useEffect(() => {
-    if (!loading) {
-      setLoadingParticles([]);
+    if (!isVisible) {
+      setParticles([]);
       return;
     }
 
-    const newParticles = Array.from({ length: 30 }, (_, i) => ({
+    const nextParticles: Particle[] = Array.from({ length: 18 }, (_, i) => ({
       id: i,
       x: Math.random() * 100,
-      delay: Math.random() * 3,
-      size: Math.random() * 4 + 2,
-      speed: Math.random() * 1.5 + 1
+      y: Math.random() * 100,
+      delay: Math.random() * 2.2,
+      size: Math.random() * 6 + 4
     }));
-    setLoadingParticles(newParticles);
-  }, [loading]);
+
+    setParticles(nextParticles);
+  }, [isVisible]);
 
   useEffect(() => {
-    if (!loading) {
-      setLoadingProgress(0);
+    if (!isVisible) {
+      if (progress > 0) {
+        setProgress(100);
+        setShowExitFlash(true);
+
+        const t = setTimeout(() => {
+          setShowExitFlash(false);
+          setProgress(0);
+        }, 450);
+
+        return () => clearTimeout(t);
+      }
+
       return;
     }
 
     const interval = setInterval(() => {
-      setLoadingProgress((prev) => {
-        if (prev >= 95) return prev;
-        return prev + Math.random() * 3;
+      setProgress((prev) => {
+        if (prev >= 92) return prev;
+
+        if (prev < 20) return prev + Math.random() * 4.2;
+        if (prev < 45) return prev + Math.random() * 3.3;
+        if (prev < 70) return prev + Math.random() * 2.4;
+        return prev + Math.random() * 1.2;
       });
-    }, 200);
+    }, 260);
 
     return () => clearInterval(interval);
-  }, [loading]);
+  }, [isVisible, progress]);
 
   useEffect(() => {
-    if (!loading) {
-      setLoadingDots("");
+    if (!isVisible) {
+      setDots("");
       return;
     }
 
     const interval = setInterval(() => {
-      setLoadingDots((prev) => {
+      setDots((prev) => {
         if (prev === "...") return "";
         return prev + ".";
       });
-    }, 500);
+    }, 450);
 
     return () => clearInterval(interval);
-  }, [loading]);
+  }, [isVisible]);
 
-  const getValue = useCallback(
-    (key, fallback = "—") => {
-      switch (key) {
-        case "audience":
-          return formatAudience(header.audience ?? draft?.audience);
-        case "innovation":
-          return header.innovation ?? header.unique ?? draft?.uniqueness ?? fallback;
-        default:
-          return header[key] ?? draft?.[key] ?? fallback;
-      }
-    },
-    [draft, header]
-  );
+  const currentStage = useMemo(() => {
+    const sorted = [...STAGES].reverse();
+    return sorted.find((stage) => progress >= stage.threshold) ?? STAGES[0];
+  }, [progress]);
 
-  const blockOrder = [
-    { key: "cognitive", title: "Когнитивный блок" },
-    { key: "sensory", title: "Сенсорный блок" },
-    { key: "branding", title: "Брендинговый блок" },
-    { key: "marketing", title: "Маркетинговый блок" }
-  ];
+  const progressLabel = Math.max(8, Math.min(99, Math.round(progress)));
 
-  const buildPassportText = useCallback(() => {
-    if (!draft) return "";
-    const lines = [];
-
-    lines.push("Паспорт уникального продукта");
-    lines.push("");
-    lines.push(`Категория: ${getValue("category")}`);
-    lines.push(`Название: ${getValue("name")}`);
-    lines.push(`Целевая аудитория: ${getValue("audience")}`);
-    lines.push(`Потребительская боль: ${getValue("pain")}`);
-    lines.push(`Уникальность: ${getValue("innovation")}`);
-    lines.push("");
-
-    blockOrder.forEach((block) => {
-      const rows = Array.isArray(blocks[block.key]) ? blocks[block.key] : [];
-      if (!rows.length) return;
-      lines.push(`=== ${block.title} ===`);
-      rows.forEach((row) => {
-        const no = row?.no ? String(row.no).trim() : "";
-        const question = row?.question || "";
-        const answer = row?.answer || "";
-        lines.push("");
-        if (no) {
-          lines.push(`${no}. ${question}`);
-        } else {
-          lines.push(question);
-        }
-        lines.push(answer);
-      });
-      lines.push("");
-    });
-
-    if (draft?.tech) {
-      lines.push("=== Технология и состав ===");
-      if (Array.isArray(draft.tech)) {
-        lines.push(draft.tech.join("\n"));
-      } else {
-        lines.push(draft.tech);
-      }
-      lines.push("");
-    }
-
-    if (draft?.star) {
-      lines.push("=== Почему это звезда? ===");
-      if (Array.isArray(draft.star)) {
-        lines.push(draft.star.join("\n"));
-      } else {
-        lines.push(draft.star);
-      }
-      lines.push("");
-    }
-
-    if (draft?.conclusion) {
-      lines.push("=== Заключение ===");
-      lines.push(draft.conclusion);
-      lines.push("");
-    }
-
-    return lines.join("\n");
-  }, [draft, blocks, blockOrder, getValue]);
-
-  const handleCopy = useCallback(() => {
-    const text = buildPassportText();
-    if (!text) return;
-    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(text);
-    }
-  }, [buildPassportText]);
-
-  const handleDownloadDocx = useCallback(async () => {
-    if (!draft) return;
-
-    try {
-      setIsDownloadingDocx(true);
-
-      const response = await fetch("/api/passport-docx", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ draft })
-      });
-
-      if (!response.ok) {
-        let message = `DOCX API ${response.status}`;
-        try {
-          const error = await response.json();
-          if (error?.error) {
-            message = error.error;
-          }
-        } catch (_) {}
-        throw new Error(message);
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-
-      const rawName =
-        draft?.header?.name ||
-        draft?.name ||
-        "passport";
-
-      const safeName = String(rawName)
-        .trim()
-        .replace(/[\\/:*?"<>|]+/g, "")
-        .replace(/\s+/g, " ")
-        .trim() || "passport";
-
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${safeName}.docx`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("DOCX download error:", error);
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Не удалось скачать DOCX"
-      );
-    } finally {
-      setIsDownloadingDocx(false);
-    }
-  }, [draft]);
-
-  const getImageGenerationData = useCallback(() => {
-    if (!draft) return null;
-
-    const sensoryBlock = blocks?.sensory;
-    let visualImage = null;
-    if (Array.isArray(sensoryBlock) && sensoryBlock.length > 0) {
-      const visualRow = sensoryBlock.find(
-        (row) =>
-          row?.question?.toLowerCase().includes("визуальный") || row?.no === "2.1"
-      );
-      if (visualRow?.answer) {
-        visualImage = visualRow.answer;
-      }
-    }
-
-    let packagingDescription = null;
-    if (draft?.tech && Array.isArray(draft.tech)) {
-      const packagingText = draft.tech.find(
-        (text) => typeof text === "string" && text.toLowerCase().includes("упаковк")
-      );
-      if (packagingText) {
-        packagingDescription = packagingText;
-      }
-    }
-
-    const brandingBlock = blocks?.branding;
-    let brandingCore = null;
-    if (Array.isArray(brandingBlock) && brandingBlock.length > 0) {
-      const coreRow = brandingBlock.find(
-        (row) => row?.question?.toLowerCase().includes("ядро") || row?.no === "3.3"
-      );
-      if (coreRow?.answer) {
-        brandingCore = coreRow.answer;
-      }
-    }
-
-    return {
-      category: getValue("category"),
-      name: getValue("name"),
-      audience: getValue("audience"),
-      pain: getValue("pain"),
-      innovation: getValue("innovation"),
-      visualImage,
-      packagingDescription,
-      brandingCore
-    };
-  }, [draft, blocks, getValue]);
-
-  const handleGenerateImage = useCallback(async () => {
-    if (!draft) return;
-
-    setIsGeneratingImage(true);
-    setImageError(null);
-    setImageUrl(null);
-    setImageBase64(null);
-
-    try {
-      const imageData = getImageGenerationData();
-      if (!imageData) {
-        throw new Error("Недостаточно данных для генерации изображения");
-      }
-
-      const response = await fetch("/api/generate-image", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(imageData)
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error?.error || `API ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (result.success && result.imageUrl) {
-        setImageUrl(result.imageUrl);
-        setImageBase64(null);
-      } else if (result.success && result.imageBase64) {
-        setImageBase64(result.imageBase64);
-        setImageUrl(null);
-      } else {
-        let errorMsg = "Изображение не было сгенерировано.";
-
-        if (result.debug) {
-          errorMsg += `\n\nОтладочная информация:\n`;
-          if (result.debug.modelUsed) {
-            errorMsg += `- Использованная модель: ${result.debug.modelUsed}\n`;
-          }
-          if (result.debug.apiUrl) {
-            errorMsg += `- API URL: ${result.debug.apiUrl}\n`;
-          }
-          if (result.debug.rawContentPreview && result.debug.rawContentPreview !== "N/A") {
-            errorMsg += `- Первые 200 символов ответа: ${result.debug.rawContentPreview.substring(0, 200)}...`;
-          }
-        } else if (result.rawContent) {
-          errorMsg += `\n\nОтвет API: ${result.rawContent.substring(0, 300)}...`;
-        }
-
-        throw new Error(errorMsg);
-      }
-    } catch (error) {
-      console.error("Image generation error:", error);
-      setImageError(
-        error instanceof Error
-          ? error.message
-          : "Не удалось сгенерировать изображение"
-      );
-    } finally {
-      setIsGeneratingImage(false);
-    }
-  }, [draft, getImageGenerationData]);
+  if (!isVisible && !showExitFlash) return null;
 
   return (
-    <aside className="flex flex-col gap-4 md:gap-6 lg:sticky lg:top-32">
-      {celebration ? (
-        <div className="passport-ready-label rounded-xl md:rounded-3xl p-3 md:p-4 text-center text-xs md:text-sm shadow-sm md:shadow-lg">
-          Поздравляем! Вы создали новый продукт!
-        </div>
-      ) : null}
+    <div className="fixed top-4 left-1/2 z-[70] w-[min(980px,calc(100vw-24px))] -translate-x-1/2 px-0">
+      <div className="relative overflow-hidden rounded-[28px] border border-white/60 bg-white/95 shadow-[0_20px_60px_rgba(0,0,0,0.12)] backdrop-blur-xl">
+        {showExitFlash ? (
+          <div className="pointer-events-none absolute inset-0 animate-pulse bg-gradient-to-r from-[#FF8A7A]/20 via-white/40 to-[#FF6B5B]/20" />
+        ) : null}
 
-      <section
-        id="full-passport"
-        className="floating-panel border border-white/20 bg-white/95 shadow-sm md:shadow-lg transition-opacity duration-500 rounded-xl md:rounded-3xl p-4 md:p-6"
-        aria-live="polite"
-        style={{ opacity: draft && !loading ? 1 : 0.6 }}
-      >
-        {loading && !draft ? (
-          <div className="flex flex-col gap-6 py-8">
-            <div className="text-center">
-              <h2 className="text-xl md:text-2xl font-semibold text-neutral-900">
-                Создаём ваш уникальный продукт{loadingDots}
-              </h2>
-            </div>
-
-            <div className="relative h-2 bg-neutral-200 rounded-full overflow-visible">
-              <div className="absolute inset-0 bg-gradient-to-r from-neutral-100 to-neutral-200 rounded-full" />
-
-              <div
-                className="absolute left-0 top-0 h-full bg-gradient-to-r from-[#FF5B5B] to-[#FF7B5B] rounded-full transition-all duration-300 ease-out shadow-[0_0_10px_rgba(255,91,91,0.5)]"
-                style={{ width: `${Math.min(loadingProgress, 100)}%` }}
-              >
-                <div className="absolute right-0 top-0 h-full w-8 bg-gradient-to-r from-transparent to-white/30 blur-sm" />
-              </div>
-
-              {loadingParticles.map((particle) => (
-                <div
+        <div className="grid grid-cols-1 md:grid-cols-[260px_minmax(0,1fr)]">
+          <div className="relative overflow-hidden border-b border-neutral-200/70 bg-[#FFF4F1] md:border-b-0 md:border-r">
+            <div className="absolute inset-0">
+              {particles.map((particle) => (
+                <span
                   key={particle.id}
-                  className="absolute top-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br from-[#FF5B5B] to-[#FF7B5B] opacity-70 shadow-[0_0_6px_rgba(255,91,91,0.6)] pointer-events-none"
+                  className="absolute rounded-full bg-[#FF8A7A]/40"
                   style={{
                     left: `${particle.x}%`,
+                    top: `${particle.y}%`,
                     width: `${particle.size}px`,
                     height: `${particle.size}px`,
-                    animationDelay: `${particle.delay}s`,
-                    animation: `floatUp ${2 + particle.speed}s ease-out infinite`
+                    animation: `floatParticle ${3.4 + particle.delay}s ease-in-out ${particle.delay}s infinite`
                   }}
                 />
               ))}
             </div>
+
+            <div className="relative flex h-full min-h-[230px] flex-col items-center justify-center px-6 py-8">
+              <div className="mb-6 rounded-full bg-white/70 px-4 py-2 text-sm font-medium text-[#7A3A34] shadow-sm">
+                {currentStage.icon} {currentStage.title}
+              </div>
+
+              <div className="relative flex h-32 w-32 items-center justify-center">
+                <div className="absolute h-32 w-32 rounded-full border border-[#FFB8AD]/40" />
+                <div className="absolute h-24 w-24 rounded-full border border-[#FF9A8A]/35" />
+                <div className="absolute h-16 w-16 rounded-full border border-[#FF7B68]/30" />
+                <div className="h-14 w-14 rounded-full bg-gradient-to-br from-[#FF9C8A] via-[#FF7C6A] to-[#FF5B5B] shadow-[0_0_30px_rgba(255,107,91,0.35)]" />
+                <div className="absolute h-6 w-6 rounded-full bg-white/90" />
+              </div>
+            </div>
           </div>
-        ) : (
-          <>
+
+          <div className="px-6 py-6 md:px-8 md:py-7">
             <div className="flex flex-col gap-2">
-              <h2 className="text-xl md:text-2xl font-semibold text-neutral-900">
-                Паспорт уникального продукта
+              <p className="text-sm uppercase tracking-[0.22em] text-neutral-400">
+                Идёт генерация
+              </p>
+              <h2 className="max-w-[640px] text-2xl font-semibold leading-tight text-neutral-900 md:text-[42px] md:leading-[1.02]">
+                Собираю новый продуктовый объект
               </h2>
-              <p className="text-xs md:text-sm text-neutral-600">
-                Когнитивно-сенсорный маркетинговый паспорт по методике «Полярная звезда»
+              <p className="max-w-[680px] text-base text-neutral-500 md:text-[18px]">
+                {currentStage.description}
               </p>
             </div>
 
-            <div id="fp-content" className="mt-4 md:mt-6 flex flex-col gap-4 md:gap-6">
-              <div className="space-y-3 md:space-y-4">
-                <div className="flex flex-col gap-1 rounded-xl md:rounded-2xl bg-white/70 p-3 md:p-4 shadow-inner">
-                  <span className="text-xs uppercase tracking-wide text-neutral-500">Категория</span>
-                  <strong className="text-base md:text-lg text-neutral-900 transition-opacity duration-300">
-                    {getValue("category")}
-                  </strong>
-                </div>
-                <div className="flex flex-col gap-1 rounded-xl md:rounded-2xl bg-white/70 p-3 md:p-4 shadow-inner">
-                  <span className="text-xs uppercase tracking-wide text-neutral-500">Название</span>
-                  <strong className="text-base md:text-lg text-neutral-900 transition-opacity duration-300">
-                    {getValue("name")}
-                  </strong>
-                </div>
-                <div className="flex flex-col gap-1 rounded-xl md:rounded-2xl bg-white/70 p-3 md:p-4 shadow-inner">
-                  <span className="text-xs uppercase tracking-wide text-neutral-500">Целевая аудитория</span>
-                  <strong className="text-base md:text-lg text-neutral-900 transition-opacity duration-300">
-                    {getValue("audience")}
-                  </strong>
-                </div>
-                <div className="flex flex-col gap-1 rounded-xl md:rounded-2xl bg-white/70 p-3 md:p-4 shadow-inner">
-                  <span className="text-xs uppercase tracking-wide text-neutral-500">Потребительская боль</span>
-                  <strong className="text-base md:text-lg text-neutral-900 transition-opacity duration-300">
-                    {getValue("pain")}
-                  </strong>
-                </div>
-                <div className="flex flex-col gap-1 rounded-xl md:rounded-2xl bg-white/70 p-3 md:p-4 shadow-inner">
-                  <span className="text-xs uppercase tracking-wide text-neutral-500">Уникальность</span>
-                  <strong className="text-base md:text-lg text-neutral-900 transition-opacity duration-300">
-                    {getValue("innovation")}
-                  </strong>
-                </div>
+            <div className="mt-6">
+              <div className="relative h-3 overflow-hidden rounded-full bg-[#F4D9D3]">
+                <div
+                  className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-[#FF6159] to-[#FF9B7A] transition-all duration-500 ease-out"
+                  style={{ width: `${progressLabel}%` }}
+                />
               </div>
 
-              {blockOrder.map((block) => {
-                const rows = Array.isArray(blocks[block.key]) ? blocks[block.key] : [];
-                if (!rows.length) return null;
+              <div className="mt-3 flex items-center justify-between text-sm text-neutral-500">
+                <span>Идёт генерация{dots}</span>
+                <span>{progressLabel}%</span>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-3xl bg-[#FFF3F0] px-5 py-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-neutral-400">
+                Сейчас происходит
+              </p>
+              <p className="mt-2 text-lg text-neutral-700">
+                {currentStage.description}
+              </p>
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
+              {STAGES.map((stage, index) => {
+                const isDone = progress >= stage.threshold + 14;
+                const isActive = currentStage.id === stage.id;
+
                 return (
                   <div
-                    key={block.key}
-                    className="rounded-xl md:rounded-3xl border border-neutral-200/70 bg-white/80 p-4 md:p-5 shadow-inner"
+                    key={stage.id}
+                    className={[
+                      "rounded-3xl border px-4 py-4 transition-all duration-300",
+                      isActive
+                        ? "border-[#FF9B8A] bg-[#FFF5F2] shadow-[0_6px_20px_rgba(255,120,100,0.12)]"
+                        : isDone
+                          ? "border-[#F0D5CF] bg-white"
+                          : "border-neutral-200 bg-white/70"
+                    ].join(" ")}
                   >
-                    <h3 className="text-base md:text-lg font-semibold text-neutral-800">
-                      {block.title}
-                    </h3>
-                    <div className="mt-3 md:mt-4 overflow-x-auto rounded-xl md:rounded-2xl border border-neutral-200/80">
-                      <table className="w-full border-collapse text-xs md:text-sm text-neutral-700 min-w-[600px] md:min-w-0">
-                        <thead className="bg-neutral-100/80 text-left uppercase tracking-wide text-neutral-500">
-                          <tr>
-                            <th className="px-2 md:px-4 py-2 md:py-3">№</th>
-                            <th className="px-2 md:px-4 py-2 md:py-3">Вопрос</th>
-                            <th className="px-2 md:px-4 py-2 md:py-3">Ответ</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {rows.map((row, index) => (
-                            <tr
-                              key={`${block.key}-${index}`}
-                              className="odd:bg-white even:bg-neutral-50/70"
-                            >
-                              <td className="px-2 md:px-4 py-2 md:py-3 align-top font-semibold text-neutral-500">
-                                {row?.no ?? index + 1}
-                              </td>
-                              <td className="px-2 md:px-4 py-2 md:py-3 align-top font-medium text-neutral-700">
-                                {row?.question || ""}
-                              </td>
-                              <td className="px-2 md:px-4 py-2 md:py-3 align-top text-neutral-600">
-                                {row?.answer || ""}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <p className="text-xs uppercase tracking-[0.18em] text-neutral-400">
+                      Этап {index + 1}
+                    </p>
+                    <div className="mt-2 flex items-center gap-2 text-[18px] text-neutral-700">
+                      <span>{stage.icon}</span>
+                      <span className={isActive ? "font-semibold text-neutral-900" : ""}>
+                        {stage.title}
+                      </span>
                     </div>
                   </div>
                 );
               })}
-
-              <div className="rounded-xl md:rounded-3xl border border-neutral-200/70 bg-white/80 p-4 md:p-5 shadow-inner">
-                <h3 className="text-base md:text-lg font-semibold text-neutral-800">
-                  Технология и состав
-                </h3>
-                <p className="mt-2 text-sm whitespace-pre-line text-neutral-700">
-                  {Array.isArray(draft?.tech) ? draft.tech.join("\n") : draft?.tech || "—"}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap justify-center gap-3 mt-4 md:mt-5">
-                <button
-                  type="button"
-                  onClick={handleCopy}
-                  disabled={!draft}
-                  className="px-6 py-3 rounded-full bg-[#ff5b5b] text-white text-sm md:text-base font-semibold shadow-md hover:bg-[#ff7171] disabled:opacity-40 disabled:cursor-not-allowed transition"
-                >
-                  Скопировать паспорт
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleDownloadDocx}
-                  disabled={!draft || isDownloadingDocx}
-                  className="px-6 py-3 rounded-full bg-neutral-900 text-white text-sm md:text-base font-semibold shadow-md hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition"
-                >
-                  {isDownloadingDocx ? "Готовим DOCX..." : "Скачать DOCX"}
-                </button>
-              </div>
             </div>
-          </>
-        )}
-      </section>
+          </div>
+        </div>
+      </div>
 
       <style jsx>{`
-        @keyframes floatUp {
+        @keyframes floatParticle {
           0% {
-            transform: translateY(0) translateX(0) scale(1);
-            opacity: 0.7;
+            transform: translateY(0px) scale(0.9);
+            opacity: 0.25;
           }
-          30% {
-            transform: translateY(-15px) translateX(5px) scale(1.3);
-            opacity: 1;
-          }
-          60% {
-            transform: translateY(-30px) translateX(15px) scale(1.1);
-            opacity: 0.8;
+          50% {
+            transform: translateY(-12px) scale(1.15);
+            opacity: 0.65;
           }
           100% {
-            transform: translateY(-50px) translateX(25px) scale(0.6);
-            opacity: 0;
+            transform: translateY(0px) scale(0.9);
+            opacity: 0.25;
           }
         }
       `}</style>
-    </aside>
+    </div>
   );
 }
