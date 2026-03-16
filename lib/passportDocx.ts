@@ -367,7 +367,6 @@ const blockRows = (
 function normalizeDraft(input: DraftData): DraftData {
   const header = input?.header ?? {};
   const blocks = input?.blocks ?? {};
-  const productCore = (input?.product_core ?? {}) as ProductCore;
 
   return {
     header: {
@@ -387,15 +386,6 @@ function normalizeDraft(input: DraftData): DraftData {
       branding: Array.isArray(blocks.branding) ? blocks.branding : [],
       marketing: Array.isArray(blocks.marketing) ? blocks.marketing : []
     },
-    product_core: {
-      one_liner: safeText(productCore.one_liner, ""),
-      physical_form: safeText(productCore.physical_form, ""),
-      appearance: safeText(productCore.appearance, ""),
-      composition: safeText(productCore.composition, ""),
-      usage: safeText(productCore.usage, ""),
-      novelty_mechanism: safeText(productCore.novelty_mechanism, ""),
-      why_people_will_try_it: safeText(productCore.why_people_will_try_it, "")
-    },
     tech: normalizeList(input?.tech),
     packaging: normalizeList(input?.packaging),
     star: normalizeList(input?.star),
@@ -407,7 +397,6 @@ export function buildPassportDoc(draft: DraftData): Document {
   const safeDraft = normalizeDraft(draft);
   const header = safeDraft.header ?? {};
   const blocks = safeDraft.blocks ?? {};
-  const productCore = (safeDraft.product_core ?? {}) as ProductCore;
 
   const title = safeText(header.name, "Паспорт продукта");
   const category = safeText(header.category);
@@ -450,29 +439,6 @@ export function buildPassportDoc(draft: DraftData): Document {
   );
 
   children.push(spacer(140));
-
-  const productCoreRows: Array<[string, string]> = [
-    ["One-liner", safeText(productCore.one_liner, "—")],
-    ["Физическая форма", safeText(productCore.physical_form, "—")],
-    ["Как выглядит", safeText(productCore.appearance, "—")],
-    ["Состав / устройство", safeText(productCore.composition, "—")],
-    ["Как используют", safeText(productCore.usage, "—")],
-    ["В чём новизна", safeText(productCore.novelty_mechanism, "—")],
-    ["Почему попробуют", safeText(productCore.why_people_will_try_it, "—")]
-  ];
-
-  const hasProductCore = productCoreRows.some(([, value]) => value !== "—");
-
-  if (hasProductCore) {
-    children.push(sectionHeading("НОВЫЙ ПРОДУКТ"));
-    children.push(
-      sectionIntro(
-        "Этот блок фиксирует сам продукт как предмет: что это такое, как он выглядит, как используется и за счёт чего действительно воспринимается новым."
-      )
-    );
-    children.push(twoColTable(productCoreRows));
-    children.push(spacer(140));
-  }
 
   const blockOrder: Array<{ key: string; title: string; intro: string }> = [
     {
