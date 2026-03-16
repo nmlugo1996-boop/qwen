@@ -17,32 +17,82 @@ const DEFAULT_TEMPERATURE = Number(process.env.TEMPERATURE || 0.42);
 
 const BLOCK_SCHEMAS = {
   cognitive: [
-    { no: "1.1", title: "Боль" },
-    { no: "1.2", title: "Новый рынок / новая ценность" },
-    { no: "1.3", title: "Новые привычки потребления" },
-    { no: "1.4", title: "Нарратив" },
-    { no: "1.5", title: "Механика обучения" }
+    {
+      no: "1.1",
+      question:
+        "Изменение модели потребления: какой новый рынок открываем? Какую новую / дополнительную монетизируемую ценность предлагаем?"
+    },
+    {
+      no: "1.2",
+      question:
+        "Изменение технологии потребления: какие новые привычки / ритуалы потребления внедряем?"
+    },
+    {
+      no: "1.3",
+      question:
+        "Нарративы: как объясняем, что инновация нужна, полезна и выгодна?"
+    },
+    {
+      no: "1.4",
+      question:
+        "Желаемая когнитивная модель: мысли, ощущения, чувства, поведение"
+    },
+    {
+      no: "1.5",
+      question:
+        "Какие способы / каналы / приёмы обучения потребителей используем?"
+    }
   ],
   sensory: [
-    { no: "2.1", title: "Визуальный образ" },
-    { no: "2.2", title: "Аудиальный образ" },
-    { no: "2.3", title: "Обонятельный образ" },
-    { no: "2.4", title: "Осязательный образ" },
-    { no: "2.5", title: "Вкусовой образ" }
+    { no: "2.1", question: "Визуальный образ" },
+    { no: "2.2", question: "Аудиальный образ" },
+    { no: "2.3", question: "Обонятельный образ" },
+    { no: "2.4", question: "Осязательный образ" },
+    { no: "2.5", question: "Вкусовой образ" }
   ],
   branding: [
-    { no: "3.1", title: "История и самоидентификация" },
-    { no: "3.2", title: "Контекст" },
-    { no: "3.3", title: "Ядро бренда" },
-    { no: "3.4", title: "Путь клиента" },
-    { no: "3.5", title: "Стратегия развития 3–5–10 лет" }
+    {
+      no: "3.1",
+      question: "История и самоидентификация"
+    },
+    {
+      no: "3.2",
+      question: "Контекст: что помогает, а что мешает"
+    },
+    {
+      no: "3.3",
+      question: "Ядро бренда: название, логотип, слоган, key visual"
+    },
+    {
+      no: "3.4",
+      question: "Путь клиента"
+    },
+    {
+      no: "3.5",
+      question: "Стратегия развития 3–5–10 лет"
+    }
   ],
   marketing: [
-    { no: "4.1", title: "Сегменты / позиционирование" },
-    { no: "4.2", title: "Линейка продукта" },
-    { no: "4.3", title: "Ценообразование" },
-    { no: "4.4", title: "Каналы продаж" },
-    { no: "4.5", title: "Продвижение" }
+    {
+      no: "4.1",
+      question: "Сегменты / позиционирование"
+    },
+    {
+      no: "4.2",
+      question: "Линейка продукта"
+    },
+    {
+      no: "4.3",
+      question: "Ценообразование"
+    },
+    {
+      no: "4.4",
+      question: "Каналы продаж"
+    },
+    {
+      no: "4.5",
+      question: "Продвижение"
+    }
   ]
 };
 
@@ -58,57 +108,65 @@ const OUTPUT_SCHEMA_TEXT = `
     "innovation": "string",
     "uniqueness": "string"
   },
+  "product_core": {
+    "one_liner": "string",
+    "physical_form": "string",
+    "appearance": "string",
+    "composition": "string",
+    "usage": "string",
+    "novelty_mechanism": "string",
+    "why_people_will_try_it": "string"
+  },
   "blocks": {
     "cognitive": [
-      { "no": "1.1", "title": "Боль", "content": "string" },
-      { "no": "1.2", "title": "Новый рынок / новая ценность", "content": "string" },
-      { "no": "1.3", "title": "Новые привычки потребления", "content": "string" },
-      { "no": "1.4", "title": "Нарратив", "content": "string" },
-      { "no": "1.5", "title": "Механика обучения", "content": "string" }
+      { "no": "1.1", "question": "string", "answer": "string" },
+      { "no": "1.2", "question": "string", "answer": "string" },
+      { "no": "1.3", "question": "string", "answer": "string" },
+      { "no": "1.4", "question": "string", "answer": "string" },
+      { "no": "1.5", "question": "string", "answer": "string" }
     ],
     "sensory": [
-      { "no": "2.1", "title": "Визуальный образ", "content": "string" },
-      { "no": "2.2", "title": "Аудиальный образ", "content": "string" },
-      { "no": "2.3", "title": "Обонятельный образ", "content": "string" },
-      { "no": "2.4", "title": "Осязательный образ", "content": "string" },
-      { "no": "2.5", "title": "Вкусовой образ", "content": "string" }
+      { "no": "2.1", "question": "string", "answer": "string" },
+      { "no": "2.2", "question": "string", "answer": "string" },
+      { "no": "2.3", "question": "string", "answer": "string" },
+      { "no": "2.4", "question": "string", "answer": "string" },
+      { "no": "2.5", "question": "string", "answer": "string" }
     ],
     "branding": [
-      { "no": "3.1", "title": "История и самоидентификация", "content": "string" },
-      { "no": "3.2", "title": "Контекст", "content": "string" },
-      { "no": "3.3", "title": "Ядро бренда", "content": "string" },
-      { "no": "3.4", "title": "Путь клиента", "content": "string" },
-      { "no": "3.5", "title": "Стратегия развития 3–5–10 лет", "content": "string" }
+      { "no": "3.1", "question": "string", "answer": "string" },
+      { "no": "3.2", "question": "string", "answer": "string" },
+      { "no": "3.3", "question": "string", "answer": "string" },
+      { "no": "3.4", "question": "string", "answer": "string" },
+      { "no": "3.5", "question": "string", "answer": "string" }
     ],
     "marketing": [
-      { "no": "4.1", "title": "Сегменты / позиционирование", "content": "string" },
-      { "no": "4.2", "title": "Линейка продукта", "content": "string" },
-      { "no": "4.3", "title": "Ценообразование", "content": "string" },
-      { "no": "4.4", "title": "Каналы продаж", "content": "string" },
-      { "no": "4.5", "title": "Продвижение", "content": "string" }
+      { "no": "4.1", "question": "string", "answer": "string" },
+      { "no": "4.2", "question": "string", "answer": "string" },
+      { "no": "4.3", "question": "string", "answer": "string" },
+      { "no": "4.4", "question": "string", "answer": "string" },
+      { "no": "4.5", "question": "string", "answer": "string" }
     ]
   },
-  "additional": {
-    "recipe_technology": "string",
-    "form_factor_packaging": "string"
-  }
+  "tech": ["string", "string", "string"],
+  "packaging": ["string", "string", "string"],
+  "star": ["string", "string", "string"],
+  "conclusion": "string"
 }
 
 ЖЁСТКИЕ ПРАВИЛА:
-1. Верни только JSON без markdown и без пояснений.
-2. Создай ОДИН новый конкретный продукт, а не перескажи входные данные.
-3. Не пересказывай методичку, не описывай структуру задания, не пиши общие правила.
-4. Название должно быть брендовым, коротким, русским и без латиницы.
-5. category — это товарная категория продукта, а не пользовательский комментарий.
-6. innovation и uniqueness — это не общие слова, а конкретная новизна продукта.
-7. В каждом блоке должно быть ровно 5 пунктов.
-8. Каждый пункт должен быть про конкретный продукт, а не про абстрактную категорию.
-9. Внутри текста обязательно должна быть предметность: форма, размер, масса, упаковка, ритуал, сценарий, канал, цена, вкус/запах/тактильность, если это уместно.
-10. Не используй пустые фразы вроде: "удобный формат", "понятная выгода", "современный продукт", "подходит многим", если не объяснил предметно.
-11. Если продукт несъедобный, в пункте 2.5 опиши не буквальный вкус, а вкусовую метафору или пользовательское ощущение.
-12. Если пользователь отключил часть блоков через Нет, сохрани структуру JSON, но делай эти пункты короче.
-13. Сначала придумай 3 разные концепции продукта, мысленно выбери лучшую, и только потом верни один финальный сильный вариант.
-14. Запрещено брать пользовательские слова и просто делать из них название или продукт.
+1. Верни только JSON без markdown.
+2. Придумай ОДИН новый конкретный физический продукт, а не абстрактную категорию.
+3. Название продукта должно быть брендовым, на русском языке и без латиницы.
+4. category — это товарная категория продукта, а не пользовательская фраза и не комментарий.
+5. Продукт должен быть реально описан: что это, как выглядит, какого размера, как открывается, как используется, почему его хотят попробовать.
+6. product_core должен быть очень конкретным, без воды.
+7. innovation и uniqueness должны быть конкретными, а не общими словами.
+8. Во всех 4 блоках должно быть ровно по 5 объектов.
+9. Если продукт несъедобный, в пункте 2.5 дай не буквальный вкус, а пользовательское ощущение.
+10. Нельзя пересказывать методичку и входные данные.
+11. Нельзя брать слова пользователя и просто собирать из них название товара.
+12. Нельзя возвращать пустые абстрактные фразы вроде "удобный формат", "современный продукт", "понятная выгода", "реальный товар".
+13. Сначала мысленно придумай 3 разных концепции, затем выбери лучший и только его верни в JSON.
 `;
 
 const BAD_NAME_PATTERNS = [
@@ -116,11 +174,9 @@ const BAD_NAME_PATTERNS = [
   "полярный продукт",
   "новая привычка",
   "полярный выбор",
-  "товар",
   "продукт",
-  "яблочно-овсян",
-  "полезный",
-  "умный"
+  "товар",
+  "сетка"
 ];
 
 function safeRead(absPath) {
@@ -172,11 +228,9 @@ const REFERENCE_LIBRARY = buildReferenceLibrary();
 
 const FALLBACK_SYSTEM_PROMPT = [
   "Ты — профессиональный продуктолог, маркетолог, бренд-стратег, технолог и когнитивный аналитик.",
-  "Ты создаёшь полный когнитивно-сенсорный паспорт нового продукта по логике Полярной Звезды.",
-  "Нужно придумать не улучшенную версию существующего товара, а новый рыночно отличимый продуктовый концепт.",
-  "Работай как практик: сначала появляется физически понятный продукт, затем его ритуал, бренд, маркетинг и стратегия.",
-  "Нельзя пересказывать методичку, вход пользователя или общие маркетинговые слова.",
-  "Ориентируйся по глубине, смелости и предметности на сильный эталонный паспорт продукта.",
+  "Ты создаёшь КОГНИТИВНО-СЕНСОРНЫЙ ПАСПОРТ нового продукта по логике Полярной Звезды.",
+  "Нужно придумать новый, рыночно отличимый, физически понятный продукт.",
+  "Ориентируйся по плотности и логике на сильный эталонный КСП, а не на поверхностный AI-текст.",
   OUTPUT_SCHEMA_TEXT
 ].join("\n\n");
 
@@ -185,9 +239,9 @@ const SYSTEM_PROMPT = [
   REFERENCE_LIBRARY
     ? [
         "НИЖЕ ДАНА БИБЛИОТЕКА РЕФЕРЕНСОВ.",
-        "ИСПОЛЬЗУЙ ИХ КАК ОРИЕНТИР ПО ГЛУБИНЕ, ПРЕДМЕТНОСТИ, СИЛЕ ПРОДУКТОВОГО МЫШЛЕНИЯ И УРОВНЮ ДЕТАЛИЗАЦИИ.",
+        "ИСПОЛЬЗУЙ ИХ КАК ОРИЕНТИР ПО ГЛУБИНЕ, СТРУКТУРЕ, СИЛЕ НАРРАТИВА И ПРЕДМЕТНОСТИ.",
         "НЕ КОПИРУЙ ИХ ДОСЛОВНО.",
-        "СОЗДАЙ АБСОЛЮТНО НОВЫЙ ПРОДУКТ, КОТОРОГО НЕТ В ТАКОЙ КОМБИНАЦИИ ФОРМЫ, РИТУАЛА, ЦЕННОСТИ И СЕНСОРНОГО КОДА.",
+        "СОЗДАЙ АБСОЛЮТНО НОВЫЙ ПРОДУКТ.",
         REFERENCE_LIBRARY
       ].join("\n\n")
     : "",
@@ -228,13 +282,19 @@ export default async function handler(req, res) {
       const repairMessages = [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: buildUserMessage(input) },
-        { role: "assistant", content: JSON.stringify(firstDraftRaw) },
-        { role: "user", content: buildRepairMessage(normalized, input) }
+        {
+          role: "assistant",
+          content: JSON.stringify(firstDraftRaw)
+        },
+        {
+          role: "user",
+          content: buildRepairMessage(normalized, input)
+        }
       ];
 
       const repairedRaw = await callTextModel(
         repairMessages,
-        clamp(input.temperature + 0.03, 0.2, 0.72)
+        clamp(input.temperature + 0.04, 0.2, 0.72)
       );
       normalized = normalizeDraft(repairedRaw, input);
     }
@@ -271,8 +331,8 @@ async function callTextModel(messages, temperature) {
         messages,
         temperature: clamp(
           Number.isFinite(temperature) ? temperature : DEFAULT_TEMPERATURE,
-          0.15,
-          0.85
+          0.18,
+          0.82
         ),
         top_p: clamp(DEFAULT_TOP_P, 0.1, 1),
         max_tokens: DEFAULT_MAX_TOKENS,
@@ -382,8 +442,8 @@ function normalizeInput(body) {
     creativity,
     temperature: clamp(
       Number.isFinite(tempCandidate) ? tempCandidate : DEFAULT_TEMPERATURE,
-      0.15,
-      0.85
+      0.18,
+      0.82
     )
   };
 }
@@ -438,9 +498,9 @@ function normalizeCreativity(value) {
 }
 
 function creativityToTemperature(creativity) {
-  if (creativity === "низкая") return 0.32;
+  if (creativity === "низкая") return 0.34;
   if (creativity === "высокая") return 0.58;
-  return 0.42;
+  return 0.44;
 }
 
 function normalizeDiagnostics(raw) {
@@ -448,137 +508,9 @@ function normalizeDiagnostics(raw) {
 
   if (!raw || typeof raw !== "object") return result;
 
-  const map = {
-    pain_refine: [
-      "pain_refine",
-      "pain",
-      "refine_pain",
-      "Уточнить/скорректировать формулировку потребительской боли"
-    ],
-    new_market: [
-      "new_market",
-      "market",
-      "new_value",
-      "Показать описание нового рынка/сегмента/ниши и новой ценности"
-    ],
-    new_habits: [
-      "new_habits",
-      "habits",
-      "Показать новые привычки потребления"
-    ],
-    narrative: [
-      "narrative",
-      "narratives",
-      "Показать объяснительный нарратив для переобучения потребителей"
-    ],
-    education: [
-      "education",
-      "training",
-      "Показать механику обучения потребителей"
-    ],
-    visual: [
-      "visual",
-      "visual_image",
-      "Показать уникальный визуальный образ"
-    ],
-    audio: [
-      "audio",
-      "sound",
-      "Показать уникальный аудиальный образ"
-    ],
-    smell: [
-      "smell",
-      "odor",
-      "Показать уникальный обонятельный образ"
-    ],
-    touch: [
-      "touch",
-      "tactile",
-      "Показать уникальный осязательный образ"
-    ],
-    taste: [
-      "taste",
-      "flavor",
-      "Показать уникальный вкусовой образ"
-    ],
-    story: [
-      "story",
-      "identity",
-      "Показать, как потребитель улучшает свой набор историй за счет бренда"
-    ],
-    context: [
-      "context",
-      "trends",
-      "Показать контекст: какие внешние условия/тренды помогают, а какие мешают"
-    ],
-    brand_core: [
-      "brand_core",
-      "core",
-      "Показать сильное ядро бренда: название, логотип, слоган, идея key visual"
-    ],
-    customer_path: [
-      "customer_path",
-      "path",
-      "Показать уникальный путь клиента и уникальные действия в важных точках пути"
-    ],
-    strategy: [
-      "strategy",
-      "brand_strategy",
-      "Показать развитие стратегии бренда на 3–5–10 лет"
-    ],
-    segments: [
-      "segments",
-      "segmentation",
-      "Показать ключевые сегменты и позиционирование относительно конкурентов"
-    ],
-    product_line: [
-      "product_line",
-      "line",
-      "Показать идею базового продукта и развитие линеек"
-    ],
-    pricing: [
-      "pricing",
-      "price",
-      "Показать ценообразование продукта и линеек"
-    ],
-    channels: [
-      "channels",
-      "sales_channels",
-      "Показать развитие каналов продаж"
-    ],
-    promotion: [
-      "promotion",
-      "marketing",
-      "Показать систему продвижения"
-    ],
-    tech: [
-      "tech",
-      "recipe",
-      "composition",
-      "Показать предложения по рецептуре, технологии и составу"
-    ],
-    packaging: [
-      "packaging",
-      "form_factor",
-      "Показать предложения по форм-факторам и упаковке"
-    ]
-  };
-
   const entries = Object.entries(raw);
-
-  Object.entries(map).forEach(([canonicalKey, aliases]) => {
-    for (const [key, value] of entries) {
-      if (
-        aliases.includes(key) ||
-        aliases.some(
-          (alias) =>
-            String(key).toLowerCase() === String(alias).toLowerCase()
-        )
-      ) {
-        result[canonicalKey] = normalizeYesNo(value);
-        break;
-      }
-    }
+  entries.forEach(([key, value]) => {
+    result[key] = normalizeYesNo(value);
   });
 
   return result;
@@ -607,7 +539,7 @@ function buildUserMessage(input) {
     "СОЗДАЙ ОДИН НОВЫЙ ПРОДУКТ.",
     "НЕ ПЕРЕСКАЗЫВАЙ ВХОДНЫЕ ДАННЫЕ.",
     "НЕ ПЕРЕСКАЗЫВАЙ МЕТОДИЧКУ.",
-    "НЕ ДЕЛАЙ ОБЩИЕ СЛОВА ВМЕСТО ПРОДУКТА.",
+    "НЕ СОБИРАЙ НАЗВАНИЕ ИЗ СЛОВ ПОЛЬЗОВАТЕЛЯ.",
     "",
     "ВХОДНЫЕ ДАННЫЕ:",
     `1. Категория / ниша: ${input.category || "-"}`,
@@ -621,16 +553,14 @@ function buildUserMessage(input) {
     `7. Уровень креативности: ${input.creativity}`,
     "",
     "КРИТИЧЕСКИЕ ТРЕБОВАНИЯ:",
-    "- сначала придумай 3 разные продуктовые концепции внутри этой задачи;",
-    "- затем выбери только одну лучшую;",
-    "- наружу покажи только один финальный вариант;",
-    "- продукт должен быть физическим, понятным и новым;",
-    "- нельзя брать слова пользователя и просто превращать их в название;",
-    "- название должно звучать как бренд, а не как описание состава;",
-    "- продукт должен ощущаться как новый подрынок, новый ритуал или новая товарная логика;",
-    "- в каждом блоке пиши только про конкретный продукт;",
-    "- не пиши 'должен быть', опиши, какой продукт уже получился;",
-    "- если идея банальная, усили её и придумай сильнее;"
+    "- сначала придумай 3 разные концепции продукта;",
+    "- затем выбери одну лучшую;",
+    "- продукт должен быть физическим, конкретным и новым;",
+    "- должно быть понятно: что это, как выглядит, какого размера, как открывается, как используется;",
+    "- продукт не должен быть просто улучшенной версией обычного товара;",
+    "- в нём должен быть новый ритуал, новая логика потребления или новая комбинация формы, пользы и бренда;",
+    "- все блоки заполняй про конкретный продукт, а не про абстрактную категорию;",
+    "- если идея банальна, усили её до уровня заметного нового подсегмента;"
   ];
 
   if (yesBlocks.length > 0) {
@@ -646,16 +576,20 @@ function buildUserMessage(input) {
 
   parts.push(
     "",
-    "ЗАПРЕТЫ:",
-    '- не давай названия вроде "Новая полка", "Умный ...", "Полезный ...", "Яблочно-..." как механическую склейку;',
-    "- не подменяй товар пользовательской фразой;",
-    "- не описывай просто категорию;",
-    "- не пиши мета-рассуждения;",
+    "ОСОБЕННО ВАЖНО:",
+    "- header.category — товарная категория;",
+    "- header.name — сильное брендовое название;",
+    "- product_core.physical_form — физический объект с размером / массой / формой;",
+    "- product_core.appearance — внешний вид продукта и упаковки;",
+    "- product_core.composition — состав / конструкция / технология;",
+    "- product_core.usage — реальная сцена использования;",
+    "- novelty_mechanism — что именно делает продукт новым;",
+    "- why_people_will_try_it — почему его реально захотят попробовать;",
     "",
     "ВЫХОД:",
     "- верни только JSON;",
     "- не пиши markdown;",
-    "- не пиши пояснения вне JSON;"
+    "- не пиши текст вне JSON;"
   );
 
   return parts.join("\n");
@@ -669,7 +603,7 @@ function buildRepairMessage(draft, input) {
     "Проблемы, которые нужно устранить:",
     ...problems.map((p, idx) => `${idx + 1}. ${p}`),
     "",
-    "Сделай новый JSON целиком с нуля.",
+    "Сделай новый JSON целиком с нуля, не патч.",
     "Верни только JSON."
   ].join("\n");
 }
@@ -679,36 +613,46 @@ function collectProblems(draft, input) {
 
   const name = sanitizeText(draft?.header?.name).toLowerCase();
   const category = sanitizeText(draft?.header?.category).toLowerCase();
-  const innovation = sanitizeText(draft?.header?.innovation).toLowerCase();
-  const uniqueness = sanitizeText(draft?.header?.uniqueness).toLowerCase();
+  const physical = sanitizeText(draft?.product_core?.physical_form).toLowerCase();
+  const appearance = sanitizeText(draft?.product_core?.appearance).toLowerCase();
+  const composition = sanitizeText(draft?.product_core?.composition).toLowerCase();
+  const usage = sanitizeText(draft?.product_core?.usage).toLowerCase();
 
   if (!name || isWeakName(name)) {
-    problems.push("Название слабое, служебное или выглядит как механическая склейка слов.");
+    problems.push("Название слабое, служебное или однотипное.");
   }
 
   if (!category || looksLikeUserComment(category, input)) {
-    problems.push("Поле category заполнено не товарной категорией, а входной фразой пользователя.");
+    problems.push("Поле category заполнено не товарной категорией.");
   }
 
-  if (!innovation || innovation.length < 30 || /новый продукт|новая ценность|современный/i.test(innovation)) {
-    problems.push("Поле innovation слишком общее.");
+  if (isWeakPhysical(physical)) {
+    problems.push("Поле product_core.physical_form не объясняет, что это за физический продукт.");
   }
 
-  if (!uniqueness || uniqueness.length < 30 || /новый продукт|новая ценность|современный/i.test(uniqueness)) {
-    problems.push("Поле uniqueness слишком общее.");
+  if (isWeakGeneric(appearance)) {
+    problems.push("Поле product_core.appearance слишком общее.");
   }
 
-  if (hasTooManyGenericBlocks(draft)) {
-    problems.push("В блоках слишком много шаблонного текста вместо конкретного нового продукта.");
+  if (isWeakGeneric(composition)) {
+    problems.push("Поле product_core.composition слишком общее.");
+  }
+
+  if (isWeakGeneric(usage)) {
+    problems.push("Поле product_core.usage слишком общее.");
   }
 
   if (repeatsInputTooDirectly(draft, input)) {
-    problems.push("Ответ слишком прямо повторяет входные слова пользователя вместо синтеза нового продукта.");
+    problems.push("Ответ слишком прямо повторяет входные слова пользователя.");
+  }
+
+  if (hasTooManyGenericBlocks(draft)) {
+    problems.push("В блоках слишком много шаблонного текста.");
   }
 
   return problems.length
     ? problems
-    : ["Ответ недостаточно сильный и выглядит как пересказ входа."];
+    : ["Ответ недостаточно конкретный и выглядит как пересказ, а не как новый продукт."];
 }
 
 function needsRepair(draft, input) {
@@ -743,25 +687,67 @@ function repeatsInputTooDirectly(draft, input) {
   return hits >= 1;
 }
 
+function isWeakPhysical(text) {
+  if (!text) return true;
+
+  const bad = [
+    "реальный товар",
+    "конкретный продукт",
+    "физически конкретный",
+    "понятный объект",
+    "должен быть",
+    "может быть"
+  ];
+
+  if (bad.some((x) => text.includes(x))) return true;
+
+  if (
+    !/\d/.test(text) &&
+    !/(г|гр|мл|мм|см|шт|сегмент|порци|батон|пачк|стакан|банка|тюбик|дойпак|брикет|капсул|кусоч|слайс|ролл|куб)/.test(
+      text
+    )
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function isWeakGeneric(text) {
+  if (!text) return true;
+
+  const bad = [
+    "должен быть",
+    "должна быть",
+    "может быть",
+    "современный дизайн",
+    "понятная польза",
+    "удобный формат",
+    "без лишнего",
+    "новизна создаётся",
+    "продукт попробуют"
+  ];
+
+  return bad.some((x) => text.includes(x));
+}
+
 function hasTooManyGenericBlocks(draft) {
   const texts = [];
 
   Object.values(draft?.blocks || {}).forEach((block) => {
     if (Array.isArray(block)) {
-      block.forEach((item) =>
-        texts.push(sanitizeText(item?.content || item?.answer).toLowerCase())
-      );
+      block.forEach((item) => texts.push(sanitizeText(item?.answer).toLowerCase()));
     }
   });
 
   const weakCount = texts.filter((text) => {
     return (
       text.includes("продукт должен") ||
-      text.includes("новая ценность") ||
-      text.includes("современный") ||
-      text.includes("понятный") ||
-      text.includes("удобный формат") ||
-      text.includes("может быть")
+      text.includes("выбираем") ||
+      text.includes("строится вокруг") ||
+      text.includes("формируем модель") ||
+      text.includes("цена должна") ||
+      text.includes("каналы выбираем")
     );
   }).length;
 
@@ -809,11 +795,15 @@ function normalizeDraft(rawDraft, input) {
     innovation: pickNonEmpty(
       sanitizeText(rawDraft.header?.innovation),
       sanitizeText(rawDraft.innovation),
+      sanitizeText(rawDraft.header?.uniqueness),
+      sanitizeText(rawDraft.uniqueness),
       fallback.header.innovation
     ),
     uniqueness: pickNonEmpty(
       sanitizeText(rawDraft.header?.uniqueness),
       sanitizeText(rawDraft.uniqueness),
+      sanitizeText(rawDraft.header?.innovation),
+      sanitizeText(rawDraft.innovation),
       fallback.header.uniqueness
     )
   };
@@ -823,36 +813,68 @@ function normalizeDraft(rawDraft, input) {
     const rawBlock = extractBlock(rawDraft, key);
     blocks[key] = schema.map((item, index) => {
       const fallbackItem = fallback.blocks[key][index];
+      const answer = pickNonEmpty(
+        extractAnswer(rawBlock, item, index),
+        fallbackItem.answer
+      );
+
       return {
         no: item.no,
-        title: item.title,
-        content: pickNonEmpty(
-          extractContent(rawBlock, item, index),
-          fallbackItem.content
-        )
+        question: item.question,
+        answer
       };
     });
   });
 
-  const additional = {
-    recipe_technology: pickNonEmpty(
-      sanitizeText(rawDraft.additional?.recipe_technology),
-      sanitizeText(rawDraft.recipe_technology),
-      sanitizeText(rawDraft.tech),
-      fallback.additional.recipe_technology
-    ),
-    form_factor_packaging: pickNonEmpty(
-      sanitizeText(rawDraft.additional?.form_factor_packaging),
-      sanitizeText(rawDraft.form_factor_packaging),
-      sanitizeText(rawDraft.packaging),
-      fallback.additional.form_factor_packaging
-    )
-  };
+  const productCore = normalizeProductCore(rawDraft.product_core, fallback);
+  const tech = normalizeList(rawDraft.tech, fallback.tech).slice(0, 3);
+  const packaging = normalizeList(rawDraft.packaging, fallback.packaging).slice(0, 3);
+  const star = normalizeList(rawDraft.star, fallback.star).slice(0, 3);
+  const conclusion = pickNonEmpty(
+    sanitizeText(rawDraft.conclusion),
+    sanitizeText(rawDraft.summary),
+    fallback.conclusion
+  );
 
   return {
     header,
+    product_core: productCore,
     blocks,
-    additional
+    tech,
+    packaging,
+    star,
+    conclusion
+  };
+}
+
+function normalizeProductCore(rawCore, fallback) {
+  const fb = fallback.product_core;
+
+  const physical = pickNonEmpty(
+    sanitizeText(rawCore?.physical_form),
+    fb.physical_form
+  );
+
+  return {
+    one_liner: pickNonEmpty(sanitizeText(rawCore?.one_liner), fb.one_liner),
+    physical_form: isWeakPhysical(physical) ? fb.physical_form : physical,
+    appearance: pickNonEmpty(
+      sanitizeText(rawCore?.appearance),
+      fb.appearance
+    ),
+    composition: pickNonEmpty(
+      sanitizeText(rawCore?.composition),
+      fb.composition
+    ),
+    usage: pickNonEmpty(sanitizeText(rawCore?.usage), fb.usage),
+    novelty_mechanism: pickNonEmpty(
+      sanitizeText(rawCore?.novelty_mechanism),
+      fb.novelty_mechanism
+    ),
+    why_people_will_try_it: pickNonEmpty(
+      sanitizeText(rawCore?.why_people_will_try_it),
+      fb.why_people_will_try_it
+    )
   };
 }
 
@@ -865,7 +887,7 @@ function buildFallbackDraft(input) {
   );
   const pain = pickNonEmpty(
     input.pain,
-    "Существующие решения закрывают задачу неудобно, слишком скучно или не полностью"
+    "Существующие решения закрывают задачу неудобно, скучно или не полностью"
   );
   const innovation = buildFallbackInnovation(category, input);
   const uniqueness = buildFallbackUniqueness(category, input);
@@ -875,109 +897,114 @@ function buildFallbackDraft(input) {
     cognitive: [
       {
         no: "1.1",
-        title: "Боль",
-        content: `Глубинная боль не в отсутствии самого товара, а в том, что привычные решения в категории "${category}" не дают человеку нужного сценария: они либо слишком неудобны, либо не встроены в реальную рутину, либо не создают ощущения, что задача решена без компромисса.`
+        question:
+          "Изменение модели потребления: какой новый рынок открываем? Какую новую / дополнительную монетизируемую ценность предлагаем?",
+        answer: `Продукт открывает внутри категории "${category}" новый микросегмент, где человек платит не только за базовую функцию, но и за более сильный ритуал, более точную сцену использования и более заметное ощущение контроля над результатом.`
       },
       {
         no: "1.2",
-        title: "Новый рынок / новая ценность",
-        content: `Продукт открывает подкатегорию внутри "${category}": человек покупает не просто товар, а более точный ритуал использования, более сильное ощущение контроля и более заметную потребительскую логику.`
+        question:
+          "Изменение технологии потребления: какие новые привычки / ритуалы потребления внедряем?",
+        answer: descriptor.habit
       },
       {
         no: "1.3",
-        title: "Новые привычки потребления",
-        content: descriptor.habit
+        question:
+          "Нарративы: как объясняем, что инновация нужна, полезна и выгодна?",
+        answer: `Нарратив строится не вокруг абстрактной инновации, а вокруг простой мысли: старое решение было неудобным, а ${name} даёт более точный, приятный и современный способ решить ту же задачу без лишнего трения.`
       },
       {
         no: "1.4",
-        title: "Нарратив",
-        content: `Нарратив строится так: старые решения закрывали задачу частично, а ${name} делает саму сцену использования проще, приятнее и более современной. Это не просто новый вкус или форма, а новая модель поведения внутри категории.`
+        question:
+          "Желаемая когнитивная модель: мысли, ощущения, чувства, поведение",
+        answer: `Мысли: я нашёл более умный способ решать свою задачу. Чувства: контроль, облегчение, удовольствие от правильного выбора. Поведение: повторная покупка, интеграция в рутину, рекомендация другим.`
       },
       {
         no: "1.5",
-        title: "Механика обучения",
-        content: `Обучение идёт через упаковку, фронтальное обещание, короткое объяснение ритуала на первом касании, визуальные подсказки и демонстрацию в месте, где боль возникает в реальной жизни.`
+        question:
+          "Какие способы / каналы / приёмы обучения потребителей используем?",
+        answer: `Обучение идёт через упаковку, короткое объяснение первого сценария, демонстрацию в точке контакта, микроинфлюенсеров и понятный первый пользовательский опыт без длинных инструкций.`
       }
     ],
     sensory: [
       {
         no: "2.1",
-        title: "Визуальный образ",
-        content: descriptor.visual
+        question: "Визуальный образ",
+        answer: descriptor.visual
       },
       {
         no: "2.2",
-        title: "Аудиальный образ",
-        content: descriptor.audio
+        question: "Аудиальный образ",
+        answer: descriptor.audio
       },
       {
         no: "2.3",
-        title: "Обонятельный образ",
-        content: descriptor.smell
+        question: "Обонятельный образ",
+        answer: descriptor.smell
       },
       {
         no: "2.4",
-        title: "Осязательный образ",
-        content: descriptor.touch
+        question: "Осязательный образ",
+        answer: descriptor.touch
       },
       {
         no: "2.5",
-        title: "Вкусовой образ",
-        content: descriptor.taste
+        question: "Вкусовой образ",
+        answer: descriptor.taste
       }
     ],
     branding: [
       {
         no: "3.1",
-        title: "История и самоидентификация",
-        content: `${name} помогает человеку ощущать себя не случайным покупателем категории, а человеком, который нашёл более умный и более собранный способ решать свою задачу в повседневной жизни.`
+        question: "История и самоидентификация",
+        answer: `${name} усиливает самоощущение человека как того, кто не идёт на старый компромисс, а выбирает более точное и более собранное решение для своей повседневной задачи.`
       },
       {
         no: "3.2",
-        title: "Контекст",
-        content: `Помогают тренды на понятные продуктовые ритуалы, более осознанный выбор и готовность пробовать новые форматы. Мешают недоверие к непривычным решениям, визуальный шум категории и риск, что новизна будет плохо объяснена на первой секунде контакта.`
+        question: "Контекст: что помогает, а что мешает",
+        answer: `Помогают тренды на новые продуктовые ритуалы, более осознанный выбор и готовность пробовать заметные форматы. Мешают перегретость категории, недоверие к непривычным решениям и слабое объяснение новизны на первом касании.`
       },
       {
         no: "3.3",
-        title: "Ядро бренда",
-        content: `Название — ${name}. Бренд-код строится вокруг одного сильного образа: ${descriptor.brandCore}. Слоган должен обещать не абстрактную пользу, а новый способ действия внутри категории.`
+        question: "Ядро бренда: название, логотип, слоган, key visual",
+        answer: `Название — ${name}. Ядро бренда строится вокруг образа: ${descriptor.brandCore}. Логотип должен быть простым и сильным, а слоган — обещать не общую пользу, а новый способ действия внутри категории.`
       },
       {
         no: "3.4",
-        title: "Путь клиента",
-        content: `Сначала человек замечает необычную форму или обещание, затем быстро понимает сцену использования, пробует продукт в своём реальном контексте, встраивает его в рутину и только после этого начинает рекомендовать другим как находку, а не как очередную новинку.`
+        question: "Путь клиента",
+        answer: `Человек замечает необычную форму или обещание, быстро понимает сцену использования, пробует продукт в своей реальной ситуации, встраивает его в рутину и начинает рекомендовать как находку, а не как очередную новинку.`
       },
       {
         no: "3.5",
-        title: "Стратегия развития 3–5–10 лет",
-        content: `На 3 года бренд закрепляет базовый сценарий и главный SKU. На 5 лет расширяется в линейку по ситуациям использования. На 10 лет превращается в устойчивый продуктовый мир с несколькими форматами и узнаваемым ритуалом потребления.`
+        question: "Стратегия развития 3–5–10 лет",
+        answer: `На 3 года бренд закрепляет базовый SKU и основной сценарий. На 5 лет расширяется в линейку по ситуациям использования. На 10 лет превращается в устойчивый продуктовый мир с несколькими форматами и узнаваемым ритуалом.`
       }
     ],
     marketing: [
       {
         no: "4.1",
-        title: "Сегменты / позиционирование",
-        content: `Главный сегмент — люди, у которых боль возникает регулярно и которые готовы платить за более точный и более удобный сценарий. Позиционирование строится не против всех конкурентов сразу, а против старого неудобного поведения внутри категории.`
+        question: "Сегменты / позиционирование",
+        answer: `Главный сегмент — люди, у которых эта боль возникает регулярно и которые готовы платить за более точный и более удобный сценарий. Позиционирование строится против старого неудобного поведения, а не против всего рынка сразу.`
       },
       {
         no: "4.2",
-        title: "Линейка продукта",
-        content: `Первый SKU должен быть самым понятным и самым сильным. Затем линейка расширяется через вкусы, размеры, сценарии использования и соседние форматы, но без потери базовой логики продукта.`
+        question: "Линейка продукта",
+        answer: `Первый SKU должен быть самым понятным и самым сильным. Затем линейка расширяется через вкусы, размеры, сценарии использования и соседние форматы без потери ядра продукта.`
       },
       {
         no: "4.3",
-        title: "Ценообразование",
-        content: `Цена должна считываться как оправданная за счёт нового сценария, лучшей предметности, заметной упаковки и более сильного первого опыта. Человек платит не только за состав или материал, а за новую модель действия.`
+        question: "Ценообразование",
+        answer: `Цена должна считываться как оправданная за счёт нового сценария, заметной упаковки, более сильного первого опыта и ясной логики использования, а не только за счёт ингредиентов или материала.`
       },
       {
         no: "4.4",
-        title: "Каналы продаж",
-        content: `Старт лучше делать там, где сама боль и сцена использования возникают наиболее естественно: профильная розница, точечные партнёрские каналы, DTC и понятные места первой пробы. Затем — маркетплейсы и масштабирование в массовые каналы.`
+        question: "Каналы продаж",
+        answer: `Старт лучше делать там, где сама боль и сцена использования возникают естественно: профильная розница, точечные партнёрские каналы, DTC и понятные места первой пробы. Затем — маркетплейсы и масштабирование.`
       },
       {
         no: "4.5",
-        title: "Продвижение",
-        content: `Продвижение должно показывать не общий бренд, а сам ритуал. Лучше всего работают демонстрация использования, объяснение новой логики продукта, микроинфлюенсеры и контент, где человек за секунды понимает, почему это не очередной аналог.`
+        question: "Продвижение",
+        answer: `Продвижение должно показывать ритуал и сценарий, а не просто красивый бренд. Лучше всего работают демонстрация использования, объяснение новой логики, микроинфлюенсеры и контент, где за секунды понятно, почему это новый продукт.`
       }
     ]
   };
@@ -991,11 +1018,20 @@ function buildFallbackDraft(input) {
       innovation,
       uniqueness
     },
+    product_core: {
+      one_liner: descriptor.oneLiner,
+      physical_form: descriptor.physicalForm,
+      appearance: descriptor.appearance,
+      composition: descriptor.composition,
+      usage: descriptor.usage,
+      novelty_mechanism: descriptor.novelty,
+      why_people_will_try_it: descriptor.tryReason
+    },
     blocks,
-    additional: {
-      recipe_technology: descriptor.recipeTechnology,
-      form_factor_packaging: descriptor.packaging
-    }
+    tech: descriptor.tech,
+    packaging: descriptor.packaging,
+    star: descriptor.star,
+    conclusion: descriptor.conclusion
   };
 }
 
@@ -1026,7 +1062,7 @@ function buildFallbackName(input, category) {
 
   const text = `${category} ${input.wish} ${input.comment}`.toLowerCase();
 
-  if (/(батон|спорт|трен|зал|энерг)/.test(text)) return "Сетка";
+  if (/(батон|спорт|трен|зал|энерг)/.test(text)) return "Подход";
   if (/(школ|завтрак|дет)/.test(text)) return "Утрянка";
   if (/(паштет|намаз|паста)/.test(text)) return "Мазок";
   if (/(напит)/.test(text)) return "Импульс";
@@ -1041,7 +1077,7 @@ function buildFallbackInnovation(category, input) {
     return "Продукт превращает обычный спортивный перекус в поэтапный ритуал внутри самой тренировки, где еда работает как инструмент управления темпом нагрузки.";
   }
   if (/(школ|завтрак|дет)/.test(text)) {
-    return "Продукт создаёт отдельный формат школьного завтрака без готовки, ложки и борьбы за утренний сценарий дома.";
+    return "Продукт создаёт отдельный формат школьного завтрака без готовки, ложки и утреннего стресса.";
   }
 
   return `Продукт создаёт внутри категории "${category}" новый сценарий потребления, в котором форма, ритуал и бренд дают отдельную оплачиваемую ценность.`;
@@ -1051,7 +1087,7 @@ function buildFallbackUniqueness(category, input) {
   const text = `${category} ${input.wish} ${input.comment}`.toLowerCase();
 
   if (/(батон|спорт|трен|зал|энерг)/.test(text)) {
-    return "Уникальность в том, что продукт едят не просто до или после нагрузки, а по фазам самой тренировки, как видимый и понятный инструмент тренировочного ритма.";
+    return "Уникальность в том, что продукт используют не просто как перекус, а как встроенный инструмент самой тренировки, распределяя его по фазам нагрузки.";
   }
   if (/(школ|завтрак|дет)/.test(text)) {
     return "Уникальность в том, что это не сладость и не каша, а отдельный физический формат готового школьного завтрака, который можно дать ребёнку сразу без подготовки.";
@@ -1065,6 +1101,20 @@ function guessDescriptor(category, input) {
 
   if (/(батон|спорт|зал|трен|энерг)/.test(text)) {
     return {
+      oneLiner:
+        "Подход — батончик, который используют не как обычный спортивный перекус, а поэтапно во время самой тренировки, чтобы держать темп и не срываться в сладкий перегруз.",
+      physicalForm:
+        "Батончик массой 48–52 г, разделённый на 4 функциональные секции по 12–13 г; прямоугольная форма, индивидуальная флоу-пак упаковка со ступенчатым вскрытием по сегментам.",
+      appearance:
+        "Сам продукт выглядит как плотная сегментированная плитка с рельефными делениями 1–4; упаковка — матовая, графитовая, с контрастной спортивной разметкой и крупным маркером сценария использования.",
+      composition:
+        "Основа — воздушные злаки, ореховая паста, связка низкой липкости, умеренно быстрые и медленные углеводы, вкусовой акцент без ощущения десерта; рецептура заточена под употребление во время нагрузки.",
+      usage:
+        "Человек кладёт батончик в спортивную сумку и использует по одной секции между подходами или фазами тренировки, не съедая его целиком за раз.",
+      novelty:
+        "Новизна возникает из превращения батончика из обычного перекуса в тренировочный интерфейс и ритуал управления темпом нагрузки.",
+      tryReason:
+        "Его захотят попробовать, потому что он обещает не просто энергию, а новый понятный ритуал внутри самой тренировки.",
       habit:
         "Новый ритуал строится вокруг поэтапного использования батончика по фазам тренировки: продукт не съедают целиком, а используют как встроенную часть тренировочного темпа.",
       visual:
@@ -1078,38 +1128,92 @@ function guessDescriptor(category, input) {
       taste:
         "Вкусовой профиль — не десертный, а функциональный: солёный какао-злак, эспрессо-орех, цитрус-соль, чтобы вкус подтверждал тренировочный ритуал, а не подменял его сладостью.",
       brandCore:
-        "ритм, сетка, фазы нагрузки, дисциплина и собранность",
-      recipeTechnology:
-        "Основа — злаковая матрица с низкой липкостью, ореховая или зерновая связка, умеренно быстрые и медленные углеводы, возможный электролитный или кофеиновый акцент в зависимости от SKU. Рецептура должна выдерживать поэтапное употребление без крошения в пыль и без грязных рук.",
-      packaging:
-        "Главный форм-фактор — батончик 48–52 г, разделённый на 4 функциональные секции. Упаковка — индивидуальная, со ступенчатым вскрытием и крупной визуальной схемой: как, когда и зачем использовать каждую часть."
+        "ритм, подход, фазы нагрузки, дисциплина и собранность",
+      tech: [
+        "Рецептура должна выдерживать поэтапное употребление без липкости и без грязных рук.",
+        "Нужен баланс умеренно быстрых и более медленных углеводов без ощущения тяжёлого десерта.",
+        "Конструкция батончика должна держать сегменты чётко, чтобы ритуал работал физически, а не только в рекламе."
+      ],
+      packaging: [
+        "Главный форм-фактор — батончик 48–52 г, разделённый на 4 функциональные секции.",
+        "Упаковка должна открываться ступенчато, чтобы поддерживать ритуал по фазам тренировки.",
+        "На фронте нужно сразу объяснять: это не просто батончик, а батончик для использования внутри тренировки."
+      ],
+      star: [
+        "У продукта есть новый ритуал, а не просто новый вкус.",
+        "Форма и упаковка работают на поведение, а не только на внешний вид.",
+        "Идею легко расширять в линейку по тренировочным сценариям."
+      ],
+      conclusion:
+        "Подход выглядит сильным MVP, потому что превращает привычный спортивный перекус в новый поведенческий инструмент внутри тренировки."
     };
   }
 
   if (/(школ|завтрак|дет)/.test(text)) {
     return {
+      oneLiner:
+        "Утрянка — готовый детский завтрак без готовки и без ложки, который родитель может дать сразу в руку или положить в рюкзак по дороге в школу.",
+      physicalForm:
+        "Порционный завтрак в формате мягкого бруска или пары мини-брусков общей массой 55–65 г в индивидуальной упаковке; можно есть руками без ложки и без разогрева.",
+      appearance:
+        "Продукт выглядит как аккуратный многослойный брусок с заметной зерновой фактурой; упаковка яркая, дружелюбная, с крупной фронтальной иконкой пользы и школьного сценария.",
+      composition:
+        "Основа — злаки, молочная или растительная база, связующий слой, вкусовой слой без избыточной приторности; формула подчинена логике быстрого завтрака без готовки.",
+      usage:
+        "Продукт дают ребёнку утром дома, в дороге или кладут в рюкзак как готовый завтрак или большой перекус между домом и школой.",
+      novelty:
+        "Новизна в том, что это не каша и не сладость, а отдельный формат готового школьного завтрака без готовки и без ложки.",
+      tryReason:
+        "Его попробуют, потому что он решает утреннюю боль семьи быстро, чисто и без борьбы за тарелку.",
       habit:
         "Продукт внедряет новый утренний ритуал: вместо ложки, кастрюли или споров дома родитель даёт ребёнку готовый завтрак в руки или кладёт его в рюкзак как первую часть дня.",
       visual:
-        "Визуально продукт должен быть дружелюбным, но не инфантильным: понятная форма бруска или пары модулей, яркая упаковка с крупной иконкой пользы и сцены дороги в школу.",
+        "Визуально продукт дружелюбный, но не инфантильный: понятная форма бруска, яркая упаковка с крупной иконкой пользы и сцены дороги в школу.",
       audio:
         "Аудиальный образ — мягкий, чистый звук вскрытия и лёгкий хруст слоёв, чтобы продукт считывался как готовая еда, а не как конфета.",
       smell:
-        "Запах — тёплый, домашний, зерновой, с фруктовой или молочной нотой, создающий ощущение полноценного завтрака без необходимости готовить.",
+        "Запах — тёплый, зерновой, с фруктовой или молочной нотой, создающий ощущение полноценного завтрака без необходимости готовить.",
       touch:
         "Тактильно продукт должен быть аккуратным, не липким, удобным для детской руки, а упаковка — открываться быстро и без сильного усилия.",
       taste:
-        "Вкус должен быть мягким, знакомым и спокойным: яблоко-корица, банан-злак, молочный злак с фруктовой нотой, без ощущения десерта и без приторности.",
+        "Вкус должен быть мягким и спокойным: яблоко-корица, банан-злак, молочный злак с фруктовой нотой, без ощущения десерта и без приторности.",
       brandCore:
-        "спокойное утро, готовность, первый шаг дня, родительский контроль без утренней борьбы",
-      recipeTechnology:
-        "Формула должна сочетать зерновую базу, молочный или растительный слой, связующую структуру и умеренную сладость. Технология обязана держать форму без ложки и без разогрева, при этом не превращая продукт в обычный десертный батончик.",
-      packaging:
-        "Главный форм-фактор — мягкий брусок или двойной модуль 55–65 г. Упаковка — яркая, индивидуальная, с фронтальным объяснением сценария: готовый завтрак без готовки, который можно дать сразу в руку или положить в рюкзак."
+        "спокойное утро, готовность, первый шаг дня, контроль без утренней борьбы",
+      tech: [
+        "Формула должна держать форму без ложки и без разогрева.",
+        "Важно избежать десертного ощущения и сохранить завтрачную логику продукта.",
+        "Технология должна позволять давать продукт ребёнку сразу в руку без риска липкости и крошения."
+      ],
+      packaging: [
+        "Главный форм-фактор — мягкий брусок или двойной модуль 55–65 г.",
+        "Упаковка должна объяснять сценарий: готовый завтрак без готовки.",
+        "Открытие должно быть быстрым и чистым, чтобы продукт работал утром в спешке."
+      ],
+      star: [
+        "Продукт решает сильную и частую боль в семье.",
+        "У него понятная сцена использования с первого взгляда.",
+        "Он создаёт отдельный формат, а не просто очередную сладость."
+      ],
+      conclusion:
+        "Утрянка выглядит сильной идеей, потому что создаёт новый формат готового школьного завтрака с очень понятным утренним ритуалом."
     };
   }
 
   return {
+    oneLiner:
+      "Контур — новый продукт внутри категории, который меняет не только сам товар, но и поведение человека в конкретной сцене использования.",
+    physicalForm:
+      "Один основной SKU в понятном порционном формате, рассчитанный на одну сессию использования; конструкция и размер подчинены конкретному сценарию потребления.",
+    appearance:
+      "Продукт имеет заметную форму, а упаковка — быстро считываемую визуальную логику и один сильный фронтальный маркер новизны.",
+    composition:
+      "Состав, материалы или конструкция подчинены потребительской боли и не противоречат сценарию использования.",
+    usage:
+      "Продукт используют в конкретной повторяемой жизненной ситуации, где старые решения были неудобны или слабы.",
+    novelty:
+      "Новизна появляется из сочетания формы, сценария, ритуала, упаковки и дополнительной воспринимаемой ценности.",
+    tryReason:
+      "Его попробуют, если человек сразу поймёт, что именно в нём нового и зачем это нужно в реальной жизни.",
     habit:
       "Новая привычка должна встраивать продукт в одну конкретную повторяемую сцену использования, где прежние решения были слабы, неудобны или невыразительны.",
     visual:
@@ -1121,13 +1225,26 @@ function guessDescriptor(category, input) {
     touch:
       "Осязательный образ должен делать продукт и упаковку узнаваемыми рукой ещё до использования.",
     taste:
-      "Вкусовой образ или вкусовая метафора должны подтверждать логику продукта и ощущение его новизны.",
-      brandCore:
+      "Вкусовой образ или пользовательское ощущение должны подтверждать логику продукта и ощущение его новизны.",
+    brandCore:
       "новый ритуал, предметность, ясность сценария, сильный маркер новизны",
-      recipeTechnology:
-      "Рецептура, материалы или конструкция должны быть простроены вокруг реальной сцены использования и возможности быстро сделать MVP без фальшивой инновационности.",
-      packaging:
-      "Форм-фактор и упаковка должны быстро объяснять сцену использования, главный маркер новизны и причину, по которой продукт стоит попробовать."
+    tech: [
+      "Рецептура, материалы или конструкция должны быть простроены вокруг реальной сцены использования.",
+      "Важно быстро сделать MVP без фальшивой инновационности.",
+      "Технология должна обслуживать ритуал и логику продукта."
+    ],
+    packaging: [
+      "Форм-фактор и упаковка должны быстро объяснять сцену использования.",
+      "На фронте нужен главный маркер новизны и причина попробовать.",
+      "Упаковка должна помогать действию, а не только красиво выглядеть."
+    ],
+    star: [
+      "У продукта есть новый ритуал и новая логика категории.",
+      "Новизна считывается с формы и упаковки.",
+      "Идею можно масштабировать в линейку."
+    ],
+    conclusion:
+      "Контур выглядит сильным MVP, если сохранить предметность, ритуал и честную новизну без косметических улучшений."
   };
 }
 
@@ -1165,7 +1282,7 @@ function extractBlock(rawDraft, key) {
   return null;
 }
 
-function extractContent(rawBlock, item, index) {
+function extractAnswer(rawBlock, item, index) {
   if (!rawBlock) return "";
 
   if (Array.isArray(rawBlock)) {
@@ -1179,22 +1296,53 @@ function extractContent(rawBlock, item, index) {
     const byNo = rawBlock[item.no];
     if (byNo !== undefined) return sanitizeText(byNo);
 
-    if (rawBlock[item.title] !== undefined) {
-      return sanitizeText(rawBlock[item.title]);
+    if (rawBlock[item.question] !== undefined) {
+      return sanitizeText(rawBlock[item.question]);
     }
+
+    const lowerQuestion = item.question.toLowerCase();
 
     for (const [key, value] of Object.entries(rawBlock)) {
       const lowerKey = String(key).toLowerCase();
-      if (
-        lowerKey.includes(item.no.toLowerCase()) ||
-        lowerKey.includes(item.title.toLowerCase())
-      ) {
+      if (lowerKey.includes(item.no) || lowerKey.includes(lowerQuestion)) {
         return sanitizeText(value);
       }
     }
   }
 
   return "";
+}
+
+function normalizeList(value, fallbackList) {
+  const result = [];
+
+  if (Array.isArray(value)) {
+    value.forEach((item) => {
+      const text = sanitizeText(item);
+      if (text) result.push(text);
+    });
+  } else if (value && typeof value === "object") {
+    Object.values(value).forEach((item) => {
+      const text = sanitizeText(item);
+      if (text) result.push(text);
+    });
+  } else {
+    const text = sanitizeText(value);
+    if (text) {
+      text
+        .split(/\r?\n+/)
+        .map((part) =>
+          part
+            .replace(/^[\-\u2022]\s*/, "")
+            .replace(/^\d+[.)]\s*/, "")
+            .trim()
+        )
+        .filter(Boolean)
+        .forEach((part) => result.push(part));
+    }
+  }
+
+  return result.length ? result : fallbackList;
 }
 
 function extractFirstJson(content) {
@@ -1254,10 +1402,10 @@ function sanitizeText(value) {
 
   if (typeof value === "object") {
     return sanitizeText(
-      value.content ??
-        value.answer ??
+      value.answer ??
         value.value ??
         value.text ??
+        value.content ??
         value.description ??
         value.response ??
         ""
