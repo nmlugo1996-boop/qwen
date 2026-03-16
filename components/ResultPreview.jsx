@@ -8,6 +8,17 @@ function formatAudience(audience) {
   return "—";
 }
 
+function normalizeListValue(value) {
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (typeof value === "string") {
+    return value
+      .split(/\r?\n+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
 export default function ResultPreview({ draft, loading, celebration = false }) {
   const [prevDraft, setPrevDraft] = useState(null);
   const [isDownloadingDocx, setIsDownloadingDocx] = useState(false);
@@ -28,7 +39,10 @@ export default function ResultPreview({ draft, loading, celebration = false }) {
           return formatAudience(header.audience ?? draft?.audience);
         case "innovation":
           return (
-            header.innovation ?? header.unique ?? draft?.uniqueness ?? fallback
+            header.innovation ??
+            header.unique ??
+            draft?.uniqueness ??
+            fallback
           );
         default:
           return header[key] ?? draft?.[key] ?? fallback;
@@ -51,6 +65,7 @@ export default function ResultPreview({ draft, loading, celebration = false }) {
 
     lines.push("Паспорт уникального продукта");
     lines.push("");
+    lines.push("КРАТКИЙ ПАСПОРТ");
     lines.push(`Категория: ${getValue("category")}`);
     lines.push(`Название: ${getValue("name")}`);
     lines.push(`Целевая аудитория: ${getValue("audience")}`);
@@ -62,47 +77,37 @@ export default function ResultPreview({ draft, loading, celebration = false }) {
       const rows = Array.isArray(blocks[block.key]) ? blocks[block.key] : [];
       if (!rows.length) return;
 
-      lines.push(`=== ${block.title} ===`);
+      lines.push(block.title.toUpperCase());
       rows.forEach((row) => {
         const no = row?.no ? String(row.no).trim() : "";
         const question = row?.question || "";
         const answer = row?.answer || "";
 
         lines.push("");
-        if (no) {
-          lines.push(`${no}. ${question}`);
-        } else {
-          lines.push(question);
-        }
+        lines.push(no ? `${no}. ${question}` : question);
         lines.push(answer);
       });
       lines.push("");
     });
 
-    if (draft?.tech) {
-      lines.push("=== Технология и состав ===");
-      if (Array.isArray(draft.tech)) {
-        lines.push(draft.tech.join("\n"));
-      } else {
-        lines.push(draft.tech);
-      }
-      lines.push("");
-    }
+    const techItems = normalizeListValue(draft?.tech);
+    const packagingItems = normalizeListValue(draft?.packaging);
 
-    if (draft?.star) {
-      lines.push("=== Почему это звезда? ===");
-      if (Array.isArray(draft.star)) {
-        lines.push(draft.star.join("\n"));
-      } else {
-        lines.push(draft.star);
-      }
+    if (techItems.length || packagingItems.length) {
+      lines.push("ДОПОЛНИТЕЛЬНО");
       lines.push("");
-    }
 
-    if (draft?.conclusion) {
-      lines.push("=== Заключение ===");
-      lines.push(draft.conclusion);
-      lines.push("");
+      if (techItems.length) {
+        lines.push("Технология и состав:");
+        techItems.forEach((item) => lines.push(`- ${item}`));
+        lines.push("");
+      }
+
+      if (packagingItems.length) {
+        lines.push("Форм-фактор и упаковка:");
+        packagingItems.forEach((item) => lines.push(`- ${item}`));
+        lines.push("");
+      }
     }
 
     return lines.join("\n");
@@ -146,7 +151,6 @@ export default function ResultPreview({ draft, loading, celebration = false }) {
       const url = window.URL.createObjectURL(blob);
 
       const rawName = draft?.header?.name || draft?.name || "passport";
-
       const safeName =
         String(rawName)
           .trim()
@@ -249,50 +253,62 @@ export default function ResultPreview({ draft, loading, celebration = false }) {
           renderPlaceholder()
         ) : (
           <div id="fp-content" className="flex flex-col gap-4 md:gap-6">
-            <div className="space-y-3 md:space-y-4">
-              <div className="flex flex-col gap-1 rounded-xl bg-white/70 p-3 shadow-inner md:rounded-2xl md:p-4">
-                <span className="text-xs uppercase tracking-wide text-neutral-500">
-                  Категория
-                </span>
-                <strong className="text-base text-neutral-900 transition-opacity duration-300 md:text-lg">
-                  {getValue("category")}
-                </strong>
-              </div>
+            <div className="rounded-xl border border-neutral-200/70 bg-white/80 p-4 shadow-inner md:rounded-3xl md:p-5">
+              <h3 className="text-base font-semibold text-neutral-800 md:text-lg">
+                Краткий паспорт
+              </h3>
 
-              <div className="flex flex-col gap-1 rounded-xl bg-white/70 p-3 shadow-inner md:rounded-2xl md:p-4">
-                <span className="text-xs uppercase tracking-wide text-neutral-500">
-                  Название
-                </span>
-                <strong className="text-base text-neutral-900 transition-opacity duration-300 md:text-lg">
-                  {getValue("name")}
-                </strong>
-              </div>
-
-              <div className="flex flex-col gap-1 rounded-xl bg-white/70 p-3 shadow-inner md:rounded-2xl md:p-4">
-                <span className="text-xs uppercase tracking-wide text-neutral-500">
-                  Целевая аудитория
-                </span>
-                <strong className="text-base text-neutral-900 transition-opacity duration-300 md:text-lg">
-                  {getValue("audience")}
-                </strong>
-              </div>
-
-              <div className="flex flex-col gap-1 rounded-xl bg-white/70 p-3 shadow-inner md:rounded-2xl md:p-4">
-                <span className="text-xs uppercase tracking-wide text-neutral-500">
-                  Потребительская боль
-                </span>
-                <strong className="text-base text-neutral-900 transition-opacity duration-300 md:text-lg">
-                  {getValue("pain")}
-                </strong>
-              </div>
-
-              <div className="flex flex-col gap-1 rounded-xl bg-white/70 p-3 shadow-inner md:rounded-2xl md:p-4">
-                <span className="text-xs uppercase tracking-wide text-neutral-500">
-                  Уникальность
-                </span>
-                <strong className="text-base text-neutral-900 transition-opacity duration-300 md:text-lg">
-                  {getValue("innovation")}
-                </strong>
+              <div className="mt-3 overflow-x-auto rounded-xl border border-neutral-200/80 md:mt-4 md:rounded-2xl">
+                <table className="min-w-[560px] w-full border-collapse text-xs text-neutral-700 md:min-w-0 md:text-sm">
+                  <thead className="bg-neutral-100/80 text-left uppercase tracking-wide text-neutral-500">
+                    <tr>
+                      <th className="px-2 py-2 md:px-4 md:py-3">Параметр</th>
+                      <th className="px-2 py-2 md:px-4 md:py-3">Значение</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="odd:bg-white even:bg-neutral-50/70">
+                      <td className="px-2 py-2 align-top font-semibold text-neutral-700 md:px-4 md:py-3">
+                        Категория
+                      </td>
+                      <td className="px-2 py-2 align-top text-neutral-600 md:px-4 md:py-3">
+                        {getValue("category")}
+                      </td>
+                    </tr>
+                    <tr className="odd:bg-white even:bg-neutral-50/70">
+                      <td className="px-2 py-2 align-top font-semibold text-neutral-700 md:px-4 md:py-3">
+                        Название
+                      </td>
+                      <td className="px-2 py-2 align-top text-neutral-600 md:px-4 md:py-3">
+                        {getValue("name")}
+                      </td>
+                    </tr>
+                    <tr className="odd:bg-white even:bg-neutral-50/70">
+                      <td className="px-2 py-2 align-top font-semibold text-neutral-700 md:px-4 md:py-3">
+                        Целевая аудитория
+                      </td>
+                      <td className="px-2 py-2 align-top text-neutral-600 md:px-4 md:py-3">
+                        {getValue("audience")}
+                      </td>
+                    </tr>
+                    <tr className="odd:bg-white even:bg-neutral-50/70">
+                      <td className="px-2 py-2 align-top font-semibold text-neutral-700 md:px-4 md:py-3">
+                        Потребительская боль
+                      </td>
+                      <td className="px-2 py-2 align-top text-neutral-600 md:px-4 md:py-3">
+                        {getValue("pain")}
+                      </td>
+                    </tr>
+                    <tr className="odd:bg-white even:bg-neutral-50/70">
+                      <td className="px-2 py-2 align-top font-semibold text-neutral-700 md:px-4 md:py-3">
+                        Уникальность
+                      </td>
+                      <td className="px-2 py-2 align-top text-neutral-600 md:px-4 md:py-3">
+                        {getValue("innovation")}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
 
@@ -344,13 +360,44 @@ export default function ResultPreview({ draft, loading, celebration = false }) {
 
             <div className="rounded-xl border border-neutral-200/70 bg-white/80 p-4 shadow-inner md:rounded-3xl md:p-5">
               <h3 className="text-base font-semibold text-neutral-800 md:text-lg">
-                Технология и состав
+                Дополнительно
               </h3>
-              <p className="mt-2 whitespace-pre-line text-sm text-neutral-700">
-                {Array.isArray(draft?.tech)
-                  ? draft.tech.join("\n")
-                  : draft?.tech || "—"}
-              </p>
+
+              <div className="mt-4 grid gap-4">
+                <div>
+                  <h4 className="text-sm font-semibold text-neutral-800 md:text-base">
+                    Технология и состав
+                  </h4>
+                  <div className="mt-2 whitespace-pre-line text-sm text-neutral-700">
+                    {normalizeListValue(draft?.tech).length ? (
+                      <ul className="list-disc space-y-1 pl-5">
+                        {normalizeListValue(draft?.tech).map((item, index) => (
+                          <li key={`tech-${index}`}>{item}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      "—"
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-semibold text-neutral-800 md:text-base">
+                    Форм-фактор и упаковка
+                  </h4>
+                  <div className="mt-2 whitespace-pre-line text-sm text-neutral-700">
+                    {normalizeListValue(draft?.packaging).length ? (
+                      <ul className="list-disc space-y-1 pl-5">
+                        {normalizeListValue(draft?.packaging).map((item, index) => (
+                          <li key={`packaging-${index}`}>{item}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      "—"
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
