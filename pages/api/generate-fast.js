@@ -51,48 +51,18 @@ const BLOCK_SCHEMAS = {
     { no: "2.5", question: "Вкусовой образ" }
   ],
   branding: [
-    {
-      no: "3.1",
-      question: "История и самоидентификация"
-    },
-    {
-      no: "3.2",
-      question: "Контекст: что помогает, а что мешает"
-    },
-    {
-      no: "3.3",
-      question: "Ядро бренда: название, логотип, слоган, key visual"
-    },
-    {
-      no: "3.4",
-      question: "Путь клиента"
-    },
-    {
-      no: "3.5",
-      question: "Стратегия развития 3–5–10 лет"
-    }
+    { no: "3.1", question: "История и самоидентификация" },
+    { no: "3.2", question: "Контекст: что помогает, а что мешает" },
+    { no: "3.3", question: "Ядро бренда: название, логотип, слоган, key visual" },
+    { no: "3.4", question: "Путь клиента" },
+    { no: "3.5", question: "Стратегия развития 3–5–10 лет" }
   ],
   marketing: [
-    {
-      no: "4.1",
-      question: "Сегменты / позиционирование"
-    },
-    {
-      no: "4.2",
-      question: "Линейка продукта"
-    },
-    {
-      no: "4.3",
-      question: "Ценообразование"
-    },
-    {
-      no: "4.4",
-      question: "Каналы продаж"
-    },
-    {
-      no: "4.5",
-      question: "Продвижение"
-    }
+    { no: "4.1", question: "Сегменты / позиционирование" },
+    { no: "4.2", question: "Линейка продукта" },
+    { no: "4.3", question: "Ценообразование" },
+    { no: "4.4", question: "Каналы продаж" },
+    { no: "4.5", question: "Продвижение" }
   ]
 };
 
@@ -170,13 +140,23 @@ const OUTPUT_SCHEMA_TEXT = `
 `;
 
 const BAD_NAME_PATTERNS = [
+  // служебные/общие
   "новая полка",
   "полярный продукт",
   "новая привычка",
   "полярный выбор",
-  "продукт",
   "товар",
-  "сетка"
+  "продукт",
+  // “липкие” повторяющиеся, которые ты видел
+  "утрянка",
+  "сетка",
+  "подход",
+  "контур",
+  // референсы — запрещаем использовать как название
+  "шоковсянка",
+  "мясовой код",
+  "мясовоикод",
+  "мясовойкод"
 ];
 
 function safeRead(absPath) {
@@ -282,19 +262,13 @@ export default async function handler(req, res) {
       const repairMessages = [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: buildUserMessage(input) },
-        {
-          role: "assistant",
-          content: JSON.stringify(firstDraftRaw)
-        },
-        {
-          role: "user",
-          content: buildRepairMessage(normalized, input)
-        }
+        { role: "assistant", content: JSON.stringify(firstDraftRaw) },
+        { role: "user", content: buildRepairMessage(normalized, input) }
       ];
 
       const repairedRaw = await callTextModel(
         repairMessages,
-        clamp(input.temperature + 0.04, 0.2, 0.72)
+        clamp(input.temperature + 0.03, 0.2, 0.72)
       );
       normalized = normalizeDraft(repairedRaw, input);
     }
@@ -319,27 +293,57 @@ async function callTextModel(messages, temperature) {
       ? setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
       : null;
 
+  const payloadBase = {
+    model: process.env.TEXT_MODEL_NAME,
+    messages,
+    temperature: clamp(
+      Number.isFinite(temperature) ? temperature : DEFAULT_TEMPERATURE,
+      0.18,
+      0.82
+    ),
+    top_p: clamp(DEFAULT_TOP_P, 0.1, 1),
+    max_tokens: DEFAULT_MAX_TOKENS
+  };
+
   try {
-    const response = await fetch(process.env.QWEN_API_URL, {
+    // 1) пробуем с response_format (если провайдер поддерживает)
+    let response = await fetch(process.env.QWEN_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${process.env.QWEN_API_KEY}`
       },
       body: JSON.stringify({
-        model: process.env.TEXT_MODEL_NAME,
-        messages,
-        temperature: clamp(
-          Number.isFinite(temperature) ? temperature : DEFAULT_TEMPERATURE,
-          0.18,
-          0.82
-        ),
-        top_p: clamp(DEFAULT_TOP_P, 0.1, 1),
-        max_tokens: DEFAULT_MAX_TOKENS,
+        ...payloadBase,
         response_format: { type: "json_object" }
       }),
       signal: controller ? controller.signal : undefined
     });
+
+    // 2) если response_format не поддержан (частая причина падения в fallback),
+    // делаем повтор запроса без response_format
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      const looksLikeResponseFormatIssue =
+        response.status === 400 &&
+        /response_format|json_object|schema/i.test(text);
+
+      if (looksLikeResponseFormatIssue) {
+        response = await fetch(process.env.QWEN_API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.QWEN_API_KEY}`
+          },
+          body: JSON.stringify(payloadBase),
+          signal: controller ? controller.signal : undefined
+        });
+      } else {
+        throw new Error(
+          `LLM request failed: ${response.status} ${text.slice(0, 1000)}`
+        );
+      }
+    }
 
     if (!response.ok) {
       const text = await response.text().catch(() => "");
@@ -536,76 +540,55 @@ function buildUserMessage(input) {
     .map(([key]) => key);
 
   const parts = [
-    "ТВОЯ ЗАДАЧА — СОЗДАТЬ ОДИН НОВЫЙ ПРОДУКТ И ЗАТЕМ ЗАПОЛНИТЬ ПАСПОРТ ИМЕННО ПРО НЕГО.",
+    "ТВОЯ ЗАДАЧА — СНАЧАЛА ПРИДУМАТЬ ОДИН НОВЫЙ ПРОДУКТ, А ПОТОМ ЗАПОЛНИТЬ ПАСПОРТ ИМЕННО ПРО НЕГО.",
     "",
-    "ЛОГИКА РАБОТЫ ОБЯЗАТЕЛЬНА:",
-    "1. Сначала придумай один новый конкретный физический продукт внутри заданной категории.",
-    "2. Затем зафиксируй его как готовую продуктовую концепцию: что это, как называется, для кого, какую боль закрывает, в чём новизна.",
-    "3. После этого ответь на все вопросы паспорта уже про этот один выбранный продукт.",
-    "4. Не пересказывай входные данные и не пересказывай методичку.",
-    "5. Не пиши общую теорию, не описывай просто категорию, не давай абстрактные советы.",
+    "ПОРЯДОК РАБОТЫ ОБЯЗАТЕЛЕН:",
+    "1. Сначала придумай 3 разных продуктовых концепции внутри заданной категории (НЕ ПИШИ ИХ В ОТВЕТ).",
+    "2. Оцени их по 4 критериям: новизна, понятность, физическая реализуемость, коммерческий потенциал.",
+    "3. Выбери один самый сильный вариант.",
+    "4. Только после этого заполни JSON-паспорт про этот один выбранный продукт.",
     "",
-    "ЧТО ИМЕННО НУЖНО СДЕЛАТЬ:",
-    "- придумать новый продукт, а не вариацию на уровне 'тот же товар, но лучше';",
-    "- продукт должен быть физически понятным: что это за объект, какой формы, какого размера, как открывается, как используется, как выглядит;",
-    "- если название не задано пользователем, придумай сильное брендовое русское название без латиницы;",
-    "- если название задано пользователем, используй его только если оно действительно подходит продукту;",
-    "- новый продукт должен быть логичным: категория, форма, упаковка, состав, сценарий, цена и каналы должны согласовываться между собой;",
-    "",
-    "КРИТИЧЕСКОЕ ПРАВИЛО:",
-    "Ты не имеешь права сразу отвечать по блокам, пока мысленно не придумал сам продукт.",
-    "Сначала всегда создаётся продукт.",
-    "Потом заполняется паспорт.",
+    "ЗАПРЕЩЕНО:",
+    "- пересказывать входные данные как готовый ответ;",
+    "- пересказывать методичку;",
+    "- брать слова пользователя и просто делать из них название;",
+    "- делать абстрактный продукт без физической формы и реального сценария;",
+    "- использовать в названии или копировать референсные/липкие имена (Утрянка, Шоковсянка, Сетка, Подход, Контур и т.п.);",
     "",
     "ПРОДУКТ ДОЛЖЕН БЫТЬ:",
     "- новым;",
-    "- конкретным;",
-    "- не банальным;",
-    "- объяснимым;",
-    "- пригодным для MVP и рынка;",
-    "- похожим по силе и логике на эталонный кейс, а не на поверхностный AI-ответ.",
-    "",
-    "ЗАПРЕЩЕНО:",
-    "- пересказывать вход пользователя как готовый продукт;",
-    "- делать название из механической склейки слов из категории или комментария;",
-    "- писать абстрактные фразы типа 'удобный формат', 'понятная выгода', 'современный продукт', если за ними нет конкретики;",
-    "- писать методологию вместо ответа;",
-    "- делать продукт без физической формы и без сценария использования;",
+    "- физически понятным;",
+    "- пригодным для MVP;",
+    "- достаточно сильным, чтобы выглядеть как новый подсегмент или новая товарная логика;",
     "",
     "ВХОДНЫЕ ДАННЫЕ:",
     `Категория: ${input.category || "-"}`,
     `Название от пользователя: ${input.name || "не задано"}`,
     `Целевая аудитория: ${input.audience || "-"}`,
     `Потребительская боль: ${input.pain || "-"}`,
-    `Комментарий / дополнительные пожелания: ${input.comment || "-"}`,
+    `Комментарий / пожелания: ${input.comment || "-"}`,
     `Уровень креативности: ${input.creativity || "средняя"}`,
     "",
-    "ТРЕБОВАНИЕ К ФИНАЛЬНОМУ РЕЗУЛЬТАТУ:",
-    "В финальном JSON должен быть уже полностью собран один новый продукт, а все поля и блоки должны описывать именно его.",
-    "То есть:",
-    "- краткий паспорт фиксирует сам продукт;",
-    "- когнитивный блок раскрывает этот продукт;",
-    "- сенсорный блок раскрывает этот продукт;",
-    "- брендинговый блок раскрывает этот продукт;",
-    "- маркетинговый блок раскрывает этот продукт;",
-    "- дополнительно раскрывает рецептуру, технологию и упаковку именно этого продукта.",
-    "",
-    "СНАЧАЛА МЫСЛЕННО ПРИДУМАЙ 3 ВАРИАНТА ПРОДУКТА.",
-    "ЗАТЕМ ВЫБЕРИ ОДИН САМЫЙ СИЛЬНЫЙ.",
-    "НАРУЖУ ВЕРНИ ТОЛЬКО ОДИН ИТОГОВЫЙ ВАРИАНТ.",
-    "",
-    "ОСОБЕННО ПОДРОБНО РАСКРОЙ ЭТИ БЛОКИ:"
+    "ОСОБЕННО ВАЖНО:",
+    "- header.category = товарная категория;",
+    "- header.name = сильное брендовое русское название без латиницы;",
+    "- product_core.physical_form = физический объект, размер, масса, форма, открытие;",
+    "- product_core.appearance = как выглядит продукт и упаковка;",
+    "- product_core.composition = состав / конструкция / технология;",
+    "- product_core.usage = реальная сцена использования;",
+    "- product_core.novelty_mechanism = в чём именно новизна;",
+    "- product_core.why_people_will_try_it = почему его реально захотят попробовать;"
   ];
 
   if (yesBlocks.length) {
+    parts.push("");
+    parts.push("ЭТИ БЛОКИ РАСКРОЙ ОСОБЕННО ПОДРОБНО:");
     parts.push(yesBlocks.join(", "));
-  } else {
-    parts.push("все основные блоки");
   }
 
   if (noBlocks.length) {
     parts.push("");
-    parts.push("ЭТИ БЛОКИ МОЖНО ДЕЛАТЬ КОРОЧЕ:");
+    parts.push("ЭТИ БЛОКИ МОЖНО СДЕЛАТЬ КОРОЧЕ:");
     parts.push(noBlocks.join(", "));
   }
 
@@ -620,10 +603,15 @@ function buildRepairMessage(draft, input) {
 
   return [
     "Исправь предыдущий JSON.",
+    "Сделай новый JSON целиком с нуля.",
+    "Не патч предыдущий ответ, а перепридумай продукт заново.",
+    "Сначала создай один новый продукт, потом заново ответь на все вопросы паспорта уже про него.",
+    "Нельзя использовать прежнее название, если оно слабое, шаблонное, референсное или повторяющееся.",
+    "Нельзя повторять входные слова пользователя как готовый продукт.",
+    "",
     "Проблемы, которые нужно устранить:",
     ...problems.map((p, idx) => `${idx + 1}. ${p}`),
     "",
-    "Сделай новый JSON целиком с нуля, не патч.",
     "Верни только JSON."
   ].join("\n");
 }
@@ -633,29 +621,34 @@ function collectProblems(draft, input) {
 
   const name = sanitizeText(draft?.header?.name).toLowerCase();
   const category = sanitizeText(draft?.header?.category).toLowerCase();
+  const innovation = sanitizeText(draft?.header?.innovation).toLowerCase();
+  const uniqueness = sanitizeText(draft?.header?.uniqueness).toLowerCase();
   const physical = sanitizeText(draft?.product_core?.physical_form).toLowerCase();
   const appearance = sanitizeText(draft?.product_core?.appearance).toLowerCase();
-  const composition = sanitizeText(draft?.product_core?.composition).toLowerCase();
   const usage = sanitizeText(draft?.product_core?.usage).toLowerCase();
 
   if (!name || isWeakName(name)) {
-    problems.push("Название слабое, служебное или однотипное.");
+    problems.push("Название слабое, шаблонное, референсное или служебное.");
   }
 
   if (!category || looksLikeUserComment(category, input)) {
     problems.push("Поле category заполнено не товарной категорией.");
   }
 
+  if (!innovation || innovation.length < 35) {
+    problems.push("Поле innovation слишком короткое и не объясняет новизну продукта.");
+  }
+
+  if (!uniqueness || uniqueness.length < 35) {
+    problems.push("Поле uniqueness слишком короткое и не объясняет уникальность продукта.");
+  }
+
   if (isWeakPhysical(physical)) {
-    problems.push("Поле product_core.physical_form не объясняет, что это за физический продукт.");
+    problems.push("Поле product_core.physical_form не описывает физический объект предметно.");
   }
 
   if (isWeakGeneric(appearance)) {
     problems.push("Поле product_core.appearance слишком общее.");
-  }
-
-  if (isWeakGeneric(composition)) {
-    problems.push("Поле product_core.composition слишком общее.");
   }
 
   if (isWeakGeneric(usage)) {
@@ -667,7 +660,7 @@ function collectProblems(draft, input) {
   }
 
   if (hasTooManyGenericBlocks(draft)) {
-    problems.push("В блоках слишком много шаблонного текста.");
+    problems.push("В блоках слишком много шаблонного текста и мало конкретики.");
   }
 
   return problems.length
@@ -676,11 +669,20 @@ function collectProblems(draft, input) {
 }
 
 function needsRepair(draft, input) {
-  return collectProblems(draft, input).length > 0;
+  const problems = collectProblems(draft, input);
+  return problems.length >= 2;
 }
 
 function isWeakName(name) {
-  return BAD_NAME_PATTERNS.some((bad) => name.includes(bad));
+  const n = String(name || "").toLowerCase().trim();
+  if (!n) return true;
+
+  // латиница запрещена
+  if (/[A-Za-z]/.test(n)) return true;
+  // должна быть кириллица
+  if (!/[А-Яа-яЁё]/.test(n)) return true;
+
+  return BAD_NAME_PATTERNS.some((bad) => n.includes(bad));
 }
 
 function looksLikeUserComment(category, input) {
@@ -878,23 +880,11 @@ function normalizeProductCore(rawCore, fallback) {
   return {
     one_liner: pickNonEmpty(sanitizeText(rawCore?.one_liner), fb.one_liner),
     physical_form: isWeakPhysical(physical) ? fb.physical_form : physical,
-    appearance: pickNonEmpty(
-      sanitizeText(rawCore?.appearance),
-      fb.appearance
-    ),
-    composition: pickNonEmpty(
-      sanitizeText(rawCore?.composition),
-      fb.composition
-    ),
+    appearance: pickNonEmpty(sanitizeText(rawCore?.appearance), fb.appearance),
+    composition: pickNonEmpty(sanitizeText(rawCore?.composition), fb.composition),
     usage: pickNonEmpty(sanitizeText(rawCore?.usage), fb.usage),
-    novelty_mechanism: pickNonEmpty(
-      sanitizeText(rawCore?.novelty_mechanism),
-      fb.novelty_mechanism
-    ),
-    why_people_will_try_it: pickNonEmpty(
-      sanitizeText(rawCore?.why_people_will_try_it),
-      fb.why_people_will_try_it
-    )
+    novelty_mechanism: pickNonEmpty(sanitizeText(rawCore?.novelty_mechanism), fb.novelty_mechanism),
+    why_people_will_try_it: pickNonEmpty(sanitizeText(rawCore?.why_people_will_try_it), fb.why_people_will_try_it)
   };
 }
 
@@ -947,31 +937,11 @@ function buildFallbackDraft(input) {
       }
     ],
     sensory: [
-      {
-        no: "2.1",
-        question: "Визуальный образ",
-        answer: descriptor.visual
-      },
-      {
-        no: "2.2",
-        question: "Аудиальный образ",
-        answer: descriptor.audio
-      },
-      {
-        no: "2.3",
-        question: "Обонятельный образ",
-        answer: descriptor.smell
-      },
-      {
-        no: "2.4",
-        question: "Осязательный образ",
-        answer: descriptor.touch
-      },
-      {
-        no: "2.5",
-        question: "Вкусовой образ",
-        answer: descriptor.taste
-      }
+      { no: "2.1", question: "Визуальный образ", answer: descriptor.visual },
+      { no: "2.2", question: "Аудиальный образ", answer: descriptor.audio },
+      { no: "2.3", question: "Обонятельный образ", answer: descriptor.smell },
+      { no: "2.4", question: "Осязательный образ", answer: descriptor.touch },
+      { no: "2.5", question: "Вкусовой образ", answer: descriptor.taste }
     ],
     branding: [
       {
@@ -1030,14 +1000,7 @@ function buildFallbackDraft(input) {
   };
 
   return {
-    header: {
-      category,
-      name,
-      audience,
-      pain,
-      innovation,
-      uniqueness
-    },
+    header: { category, name, audience, pain, innovation, uniqueness },
     product_core: {
       one_liner: descriptor.oneLiner,
       physical_form: descriptor.physicalForm,
@@ -1076,18 +1039,80 @@ function buildFallbackCategory(input) {
 
 function buildFallbackName(input, category) {
   const preferred = sanitizeText(input.name);
-  if (preferred && !/[A-Za-z]/.test(preferred) && /[А-Яа-яЁё]/.test(preferred)) {
+  if (
+    preferred &&
+    !/[A-Za-z]/.test(preferred) &&
+    /[А-Яа-яЁё]/.test(preferred) &&
+    !isWeakName(preferred.toLowerCase())
+  ) {
     return preferred;
   }
 
-  const text = `${category} ${input.wish} ${input.comment}`.toLowerCase();
+  const seed = buildSeed(
+    `${category}|${input.wish}|${input.comment}|${input.audience}|${Date.now()}|${Math.random()}`
+  );
 
-  if (/(батон|спорт|трен|зал|энерг)/.test(text)) return "Подход";
-  if (/(школ|завтрак|дет)/.test(text)) return "Утрянка";
-  if (/(паштет|намаз|паста)/.test(text)) return "Мазок";
-  if (/(напит)/.test(text)) return "Импульс";
+  return generateRussianBrandName(seed);
+}
 
-  return "Контур";
+function buildSeed(value) {
+  const text = String(value || "");
+  let hash = 0;
+
+  for (let i = 0; i < text.length; i += 1) {
+    hash = (hash * 31 + text.charCodeAt(i)) >>> 0;
+  }
+
+  return hash;
+}
+
+function pickBySeed(items, seed, shift = 0) {
+  if (!Array.isArray(items) || !items.length) return "";
+  const index = Math.abs((seed + shift) % items.length);
+  return items[index];
+}
+
+function generateRussianBrandName(seed) {
+  const starts = [
+    "Ар", "Ве", "Да", "Ле", "Ма", "Но", "Ра", "Со", "Та", "Эс",
+    "За", "Ми", "Лу", "Ко", "Ро", "Фе", "Гра", "Бри", "Те", "Са"
+  ];
+
+  const middles = [
+    "ви", "ро", "на", "ти", "ле", "са", "мо", "ри", "ка", "но",
+    "ла", "де", "ми", "си", "во", "ра", "по", "зи", "ше", "ту"
+  ];
+
+  const ends = [
+    "ка", "на", "ра", "та", "ла", "сия", "ника", "вика", "рия", "сса",
+    "лен", "рон", "дара", "вель", "мира", "нта", "эль", "ора", "ина", "ея"
+  ];
+
+  // раньше тут мог появляться фиксированный "Лавира" — это давало повторяемость
+  // теперь делаем несколько попыток с изменением seed, пока не получится нормальное имя
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const s = (seed + attempt * 9973) >>> 0;
+
+    const first = pickBySeed(starts, s, 3);
+    const middle = pickBySeed(middles, s, 11);
+    const end = pickBySeed(ends, s, 23);
+
+    let name = `${first}${middle}${end}`
+      .replace(/аа+/g, "а")
+      .replace(/оо+/g, "о")
+      .replace(/ее+/g, "е")
+      .replace(/ии+/g, "и")
+      .trim();
+
+    name = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+
+    if (!isWeakName(name.toLowerCase()) && name.length >= 4) {
+      return name;
+    }
+  }
+
+  // крайний случай — генерим ещё один seed и пробуем заново (без фиксированного имени)
+  return generateRussianBrandName((seed ^ 0x9e3779b9) >>> 0);
 }
 
 function buildFallbackInnovation(category, input) {
@@ -1117,12 +1142,15 @@ function buildFallbackUniqueness(category, input) {
 }
 
 function guessDescriptor(category, input) {
+  // твоя логика ниже оставлена без изменений (она уже достаточно предметная).
+  // Она работает как fallback-описатель, когда модель не отдала сильный ответ.
   const text = `${category} ${input.wish} ${input.comment}`.toLowerCase();
 
   if (/(батон|спорт|зал|трен|энерг)/.test(text)) {
+    const dynamicName = buildFallbackName(input, category);
     return {
       oneLiner:
-        "Подход — батончик, который используют не как обычный спортивный перекус, а поэтапно во время самой тренировки, чтобы держать темп и не срываться в сладкий перегруз.",
+        `${dynamicName} — батончик, который используют не как обычный спортивный перекус, а поэтапно во время самой тренировки, чтобы держать темп и не срываться в сладкий перегруз.`,
       physicalForm:
         "Батончик массой 48–52 г, разделённый на 4 функциональные секции по 12–13 г; прямоугольная форма, индивидуальная флоу-пак упаковка со ступенчатым вскрытием по сегментам.",
       appearance:
@@ -1165,14 +1193,15 @@ function guessDescriptor(category, input) {
         "Идею легко расширять в линейку по тренировочным сценариям."
       ],
       conclusion:
-        "Подход выглядит сильным MVP, потому что превращает привычный спортивный перекус в новый поведенческий инструмент внутри тренировки."
+        `${dynamicName} выглядит сильным MVP, потому что превращает привычный спортивный перекус в новый поведенческий инструмент внутри тренировки.`
     };
   }
 
   if (/(школ|завтрак|дет)/.test(text)) {
+    const dynamicName = buildFallbackName(input, category);
     return {
       oneLiner:
-        "Утрянка — готовый детский завтрак без готовки и без ложки, который родитель может дать сразу в руку или положить в рюкзак по дороге в школу.",
+        `${dynamicName} — готовый детский завтрак без готовки и без ложки, который родитель может дать сразу в руку или положить в рюкзак по дороге в школу.`,
       physicalForm:
         "Порционный завтрак в формате мягкого бруска или пары мини-брусков общей массой 55–65 г в индивидуальной упаковке; можно есть руками без ложки и без разогрева.",
       appearance:
@@ -1215,13 +1244,15 @@ function guessDescriptor(category, input) {
         "Он создаёт отдельный формат, а не просто очередную сладость."
       ],
       conclusion:
-        "Утрянка выглядит сильной идеей, потому что создаёт новый формат готового школьного завтрака с очень понятным утренним ритуалом."
+        `${dynamicName} выглядит сильной идеей, потому что создаёт новый формат готового школьного завтрака с очень понятным утренним ритуалом.`
     };
   }
 
+  const dynamicName = buildFallbackName(input, category);
+
   return {
     oneLiner:
-      "Контур — новый продукт внутри категории, который меняет не только сам товар, но и поведение человека в конкретной сцене использования.",
+      `${dynamicName} — новый продукт внутри категории, который меняет не только сам товар, но и поведение человека в конкретной сцене использования.`,
     physicalForm:
       "Один основной SKU в понятном порционном формате, рассчитанный на одну сессию использования; конструкция и размер подчинены конкретному сценарию потребления.",
     appearance:
@@ -1264,7 +1295,7 @@ function guessDescriptor(category, input) {
       "Идею можно масштабировать в линейку."
     ],
     conclusion:
-      "Контур выглядит сильным MVP, если сохранить предметность, ритуал и честную новизну без косметических улучшений."
+      `${dynamicName} выглядит сильным MVP, если сохранить предметность, ритуал и честную новизну без косметических улучшений.`
   };
 }
 
@@ -1274,6 +1305,7 @@ function forceName(name, fallback) {
   if (/[A-Za-z]/.test(text)) return fallback;
   if (!/[А-Яа-яЁё]/.test(text)) return fallback;
   if (isWeakName(text.toLowerCase())) return fallback;
+  if (text.length < 3) return fallback;
   return text;
 }
 
