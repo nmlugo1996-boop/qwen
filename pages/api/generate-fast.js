@@ -51,18 +51,48 @@ const BLOCK_SCHEMAS = {
     { no: "2.5", question: "Вкусовой образ" }
   ],
   branding: [
-    { no: "3.1", question: "История и самоидентификация" },
-    { no: "3.2", question: "Контекст: что помогает, а что мешает" },
-    { no: "3.3", question: "Ядро бренда: название, логотип, слоган, key visual" },
-    { no: "3.4", question: "Путь клиента" },
-    { no: "3.5", question: "Стратегия развития 3–5–10 лет" }
+    {
+      no: "3.1",
+      question: "История и самоидентификация"
+    },
+    {
+      no: "3.2",
+      question: "Контекст: что помогает, а что мешает"
+    },
+    {
+      no: "3.3",
+      question: "Ядро бренда: название, логотип, слоган, key visual"
+    },
+    {
+      no: "3.4",
+      question: "Путь клиента"
+    },
+    {
+      no: "3.5",
+      question: "Стратегия развития 3–5–10 лет"
+    }
   ],
   marketing: [
-    { no: "4.1", question: "Сегменты / позиционирование" },
-    { no: "4.2", question: "Линейка продукта" },
-    { no: "4.3", question: "Ценообразование" },
-    { no: "4.4", question: "Каналы продаж" },
-    { no: "4.5", question: "Продвижение" }
+    {
+      no: "4.1",
+      question: "Сегменты / позиционирование"
+    },
+    {
+      no: "4.2",
+      question: "Линейка продукта"
+    },
+    {
+      no: "4.3",
+      question: "Ценообразование"
+    },
+    {
+      no: "4.4",
+      question: "Каналы продаж"
+    },
+    {
+      no: "4.5",
+      question: "Продвижение"
+    }
   ]
 };
 
@@ -141,7 +171,7 @@ const OUTPUT_SCHEMA_TEXT = `
 15. Имя продукта должно быть ОДИНАКОВЫМ во всём JSON: header.name = то же имя везде.
 `;
 
-// анти-повторы имён + запреты на референсы
+// ===== анти-повторы / анти-референсы =====
 const BAD_NAME_PATTERNS = [
   "новая полка",
   "полярный продукт",
@@ -163,25 +193,31 @@ const GENERIC_PHRASES = [
   "удобный формат",
   "современный продукт",
   "понятная выгода",
-  "в социальных сетях",
+  "реальный товар",
   "инновационный продукт",
   "уникальный продукт",
   "для широкой аудитории",
   "премиальный сегмент",
+  "в социальных сетях",
   "активные люди",
   "высокое качество",
   "для всей семьи"
 ];
 
-// CJK ranges: Hiragana/Katakana/CJK Unified + Extension A
+// язык
 const CJK_RE = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/;
-// латиница
 const LATIN_RE = /[A-Za-z]/;
+
+// “плотность” / “шоковсянка-стайл”
+const PACK_WORDS_RE =
+  /(флоу\-пак|flow\-pack|дойпак|саше|стик|зип|zip|клапан|насечк|крышк|фольг|плёнк|картон|короб|лоток|банка|стакан|бутыл|пакет|обёртк|оберт|шов|сегмент|модул|порци)/i;
+const UNIT_RE = /\b(\d{1,4})\s?(г|гр|кг|мл|л|мм|см|шт|порц)\b/i;
+const DIGIT_RE = /\d/;
 
 function safeRead(absPath) {
   try {
     return fs.readFileSync(absPath, "utf8");
-  } catch {
+  } catch (error) {
     return "";
   }
 }
@@ -189,12 +225,13 @@ function safeRead(absPath) {
 function getReferenceFiles() {
   try {
     if (!fs.existsSync(REF_DIR)) return [];
+
     return fs
       .readdirSync(REF_DIR)
       .filter((file) => /\.(md|txt)$/i.test(file))
       .filter((file) => file !== "passport_prompt.txt")
       .sort();
-  } catch {
+  } catch (error) {
     return [];
   }
 }
@@ -260,7 +297,7 @@ export default async function handler(req, res) {
       req.body && typeof req.body === "object"
         ? req.body
         : await readJson(req);
-  } catch {
+  } catch (error) {
     res.status(400).json({ error: "Invalid JSON payload" });
     return;
   }
@@ -268,6 +305,7 @@ export default async function handler(req, res) {
   const input = normalizeInput(body);
 
   try {
+    // 1-я попытка
     const firstMessages = [
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: buildUserMessage(input) }
@@ -276,6 +314,7 @@ export default async function handler(req, res) {
     const firstDraftRaw = await callTextModel(firstMessages, input.temperature);
     let normalized = normalizeDraft(firstDraftRaw, input);
 
+    // 2-я попытка только при провале гейтов
     if (needsRepair(normalized, input)) {
       const repairMessages = [
         { role: "system", content: SYSTEM_PROMPT },
@@ -286,7 +325,7 @@ export default async function handler(req, res) {
 
       const repairedRaw = await callTextModel(
         repairMessages,
-        clamp(input.temperature + 0.03, 0.2, 0.72)
+        clamp(input.temperature + 0.04, 0.22, 0.72)
       );
       normalized = normalizeDraft(repairedRaw, input);
     }
@@ -503,13 +542,10 @@ function normalizeAudience(source) {
   if (gender && !/неважно|любые|все подряд/i.test(gender)) parts.push(`Пол: ${gender}`);
   if (decision && !/неважно|любые|все подряд/i.test(decision)) parts.push(`Кто выбирает/покупает: ${decision}`);
 
-  const joined = parts.join(". ").trim();
-
-  return joined
+  return parts
+    .join(". ")
     .replace(/\bНеважно\b/gi, "")
     .replace(/\s{2,}/g, " ")
-    .replace(/\. \./g, ".")
-    .replace(/\.\s*\./g, ".")
     .trim();
 }
 
@@ -533,9 +569,11 @@ function creativityToTemperature(creativity) {
 
 function normalizeDiagnostics(raw) {
   const result = {};
+
   if (!raw || typeof raw !== "object") return result;
 
-  Object.entries(raw).forEach(([key, value]) => {
+  const entries = Object.entries(raw);
+  entries.forEach(([key, value]) => {
     result[key] = normalizeYesNo(value);
   });
 
@@ -578,6 +616,10 @@ function buildUserMessage(input) {
     "- использовать в названии или копировать референсные/липкие имена (Утрянка, Шоковсянка, Сетка, Подход, Контур и т.п.);",
     "- писать что-либо не по-русски; никакой латиницы и CJK-символов;",
     "",
+    "ТРЕБОВАНИЕ К СТИЛЮ (КАК ЭТАЛОН):",
+    "- не лозунги, а предметность: цифры, упаковка, механизм открытия, сцена использования, полка, ритуал;",
+    "- в каждом ответе 1–2 конкретные детали, а не общая теория;",
+    "",
     "ВХОДНЫЕ ДАННЫЕ:",
     `Категория: ${input.category || "-"}`,
     `Название от пользователя: ${input.name || "не задано"}`,
@@ -605,13 +647,99 @@ function buildUserMessage(input) {
 
   if (noBlocks.length) {
     parts.push("");
-    parts.push("ЭТИ БЛОКИ МОЖНО СДЕЛАТЬ КОРОЧЕ:");
+    parts.push("ЭТИ БЛОКИ МОЖНО СДЕЛАТЬ КОРОЧЕ, НО БЕЗ ПОТЕРИ ПРЕДМЕТНОСТИ:");
     parts.push(noBlocks.join(", "));
   }
 
   parts.push("");
   parts.push("ВЕРНИ ТОЛЬКО JSON БЕЗ MARKDOWN И БЕЗ ПОЯСНЕНИЙ.");
+
   return parts.join("\n");
+}
+
+// ===== ГЕЙТЫ “ШОКОВСЯНКА” =====
+function densityScore(text) {
+  const t = sanitizeText(text);
+  if (!t) return 0;
+
+  let score = 0;
+
+  // базовая длина
+  if (t.length >= 120) score += 1;
+  if (t.length >= 220) score += 1;
+  if (t.length >= 360) score += 1;
+
+  // числа / единицы
+  if (DIGIT_RE.test(t)) score += 2;
+  if (UNIT_RE.test(t)) score += 2;
+
+  // упаковка / механика
+  if (PACK_WORDS_RE.test(t)) score += 2;
+
+  // штраф за клише
+  const low = t.toLowerCase();
+  const hits = GENERIC_PHRASES.filter((p) => low.includes(p)).length;
+  score -= hits * 2;
+
+  return score;
+}
+
+function passportDensityGate(draft) {
+  // собираем ключевые места: product_core + упаковка/тех + пару блоков
+  const core = draft?.product_core || {};
+  const texts = [
+    core.one_liner,
+    core.physical_form,
+    core.appearance,
+    core.composition,
+    core.usage,
+    core.novelty_mechanism,
+    core.why_people_will_try_it,
+    ...(Array.isArray(draft?.packaging) ? draft.packaging : []),
+    ...(Array.isArray(draft?.tech) ? draft.tech : [])
+  ];
+
+  // дополнительно: по одному ответу из sensory + marketing (часто там вылезает “плакатность”)
+  const s0 = draft?.blocks?.sensory?.[0]?.answer;
+  const s4 = draft?.blocks?.sensory?.[4]?.answer;
+  const m2 = draft?.blocks?.marketing?.[2]?.answer;
+  if (s0) texts.push(s0);
+  if (s4) texts.push(s4);
+  if (m2) texts.push(m2);
+
+  const total = texts.reduce((acc, x) => acc + densityScore(x), 0);
+
+  // Порог под “Шоковсянку”: если core/упаковка пустые и без цифр — не проходит.
+  return total >= 18;
+}
+
+function detectLanguageViolations(draft) {
+  const all = collectAllText(draft);
+  const probs = [];
+  if (CJK_RE.test(all)) probs.push("cjk");
+  if (LATIN_RE.test(all)) probs.push("latin");
+  return probs;
+}
+
+function detectNameDrift(draft) {
+  const headerName = sanitizeText(draft?.header?.name);
+  if (!headerName) return null;
+
+  const text = collectAllText(draft);
+
+  // 1) "Название — X"
+  const m1 = text.match(/Название\s*[-—:]\s*([А-ЯЁ][А-Яа-яЁё0-9\-]{2,40})/);
+  if (m1 && m1[1] && m1[1] !== headerName) return m1[1];
+
+  // 2) "X выглядит ..."
+  const m2 = text.match(/([А-ЯЁ][А-Яа-яЁё0-9\-]{2,40})\s+выглядит\s+/);
+  if (m2 && m2[1] && m2[1] !== headerName) return m2[1];
+
+  // 3) "X — это ..."
+  const m3 = text.match(/([А-ЯЁ][А-Яа-яЁё0-9\-]{2,40})\s+—\s+это\s+/);
+  if (m3 && m3[1] && m3[1] !== headerName) return m3[1];
+
+  return null;
 }
 
 function buildRepairMessage(draft, input) {
@@ -621,6 +749,12 @@ function buildRepairMessage(draft, input) {
   return [
     "Ты провалил требования качества. Сделай новый JSON ЦЕЛИКОМ С НУЛЯ.",
     "НЕ ПАТЧ предыдущий ответ. ПЕРЕПРИДУМАЙ продукт заново, но строго в рамках категории и боли.",
+    "",
+    "СТИЛЬ КАК ЭТАЛОН (ОБЯЗАТЕЛЬНО):",
+    "- не лозунги и не общая теория;",
+    "- в каждом ответе 1–2 физические детали (цифра/упаковка/механика/сцена/ритуал/полка);",
+    "- product_core: масса/размер, упаковка, как открывается, как держится в руке, реальная сцена;",
+    "- packaging: тип, материалы, графика, маркер на фронте, механизм вскрытия;",
     "",
     "ОБЯЗАТЕЛЬНО:",
     "- Пиши ТОЛЬКО ПО-РУССКИ. Никаких иероглифов, латиницы, смешанных языков.",
@@ -649,14 +783,21 @@ function collectProblems(draft, input) {
   const appearance = sanitizeText(draft?.product_core?.appearance).toLowerCase();
   const usage = sanitizeText(draft?.product_core?.usage).toLowerCase();
 
-  const allText = collectAllText(draft);
-  if (CJK_RE.test(allText)) problems.push("В ответе есть CJK-символы (китайский/японский/корейский). Это запрещено.");
-  if (LATIN_RE.test(allText)) problems.push("В ответе есть латиница. Это запрещено (пиши только по-русски).");
+  // язык
+  const lang = detectLanguageViolations(draft);
+  if (lang.includes("cjk")) problems.push("В ответе есть CJK-символы (китайский/японский/корейский). Это запрещено.");
+  if (lang.includes("latin")) problems.push("В ответе есть латиница. Это запрещено (пиши только по-русски).");
 
+  // дрейф имени
   const drift = detectNameDrift(draft);
   if (drift) problems.push(`Обнаружен дрейф имени продукта: найдено другое имя "${drift}" вместо header.name.`);
 
-  if (!name || isWeakName(name)) problems.push("Название слабое, шаблонное, референсное или служебное.");
+  // плотность (главный “шоковсянка” гейт)
+  if (!passportDensityGate(draft)) problems.push("Недостаточная предметность (плакатный/водянистый текст). Нужны цифры, упаковка, механика, сцена, полка.");
+
+  if (!name || isWeakName(name)) {
+    problems.push("Название слабое, шаблонное, референсное или служебное.");
+  }
 
   if (!category || looksLikeUserComment(category, input)) {
     problems.push("Поле category заполнено не товарной категорией.");
@@ -693,12 +834,16 @@ function collectProblems(draft, input) {
 function needsRepair(draft, input) {
   const problems = collectProblems(draft, input);
 
-  // жёсткий триггер: дрейф имени / не-русский текст
-  const hard = problems.some((p) =>
-    p.toLowerCase().includes("дрейф имени") ||
-    p.toLowerCase().includes("cjk") ||
-    p.toLowerCase().includes("латиниц")
-  );
+  // жёсткий триггер: дрейф имени / не-русский текст / провал плотности
+  const hard = problems.some((p) => {
+    const low = p.toLowerCase();
+    return (
+      low.includes("дрейф имени") ||
+      low.includes("cjk") ||
+      low.includes("латиниц") ||
+      low.includes("недостаточная предметность")
+    );
+  });
   if (hard) return true;
 
   return problems.length >= 2;
@@ -709,7 +854,7 @@ function isWeakName(name) {
   if (!n) return true;
   if (LATIN_RE.test(n)) return true;
   if (!/[А-Яа-яЁё]/.test(n)) return true;
-  if (n.length < 3) return true;
+
   return BAD_NAME_PATTERNS.some((bad) => n.includes(bad));
 }
 
@@ -751,12 +896,7 @@ function isWeakPhysical(text) {
 
   if (bad.some((x) => text.includes(x))) return true;
 
-  if (
-    !/\d/.test(text) &&
-    !/(г|гр|кг|мл|л|мм|см|шт|сегмент|порци|батон|пачк|стакан|банка|тюбик|дойпак|брикет|капсул|кусоч|слайс|ролл|куб|флоу\-пак|короб)/.test(
-      text
-    )
-  ) {
+  if (!DIGIT_RE.test(text) && !PACK_WORDS_RE.test(text) && !UNIT_RE.test(text)) {
     return true;
   }
 
@@ -786,7 +926,9 @@ function hasTooManyGenericBlocks(draft) {
 
   Object.values(draft?.blocks || {}).forEach((block) => {
     if (Array.isArray(block)) {
-      block.forEach((item) => texts.push(sanitizeText(item?.answer).toLowerCase()));
+      block.forEach((item) =>
+        texts.push(sanitizeText(item?.answer).toLowerCase())
+      );
     }
   });
 
@@ -880,7 +1022,10 @@ function normalizeDraft(rawDraft, input) {
 
   const productCore = normalizeProductCore(rawDraft.product_core, fallback);
   const tech = normalizeList(rawDraft.tech, fallback.tech).slice(0, 3);
-  const packaging = normalizeList(rawDraft.packaging, fallback.packaging).slice(0, 3);
+  const packaging = normalizeList(rawDraft.packaging, fallback.packaging).slice(
+    0,
+    3
+  );
   const star = normalizeList(rawDraft.star, fallback.star).slice(0, 3);
   const conclusion = pickNonEmpty(
     sanitizeText(rawDraft.conclusion),
@@ -911,7 +1056,10 @@ function normalizeProductCore(rawCore, fallback) {
     one_liner: pickNonEmpty(sanitizeText(rawCore?.one_liner), fb.one_liner),
     physical_form: isWeakPhysical(physical) ? fb.physical_form : physical,
     appearance: pickNonEmpty(sanitizeText(rawCore?.appearance), fb.appearance),
-    composition: pickNonEmpty(sanitizeText(rawCore?.composition), fb.composition),
+    composition: pickNonEmpty(
+      sanitizeText(rawCore?.composition),
+      fb.composition
+    ),
     usage: pickNonEmpty(sanitizeText(rawCore?.usage), fb.usage),
     novelty_mechanism: pickNonEmpty(
       sanitizeText(rawCore?.novelty_mechanism),
@@ -1061,6 +1209,7 @@ function buildFallbackDraft(input) {
   };
 }
 
+// ======= ТВОЙ “БОГАТЫЙ” FALLBACK guessDescriptor() — ПОЛНОСТЬЮ =======
 function buildFallbackCategory(input) {
   const text = `${input.category} ${input.wish} ${input.comment}`.toLowerCase();
 
@@ -1092,7 +1241,7 @@ function buildFallbackName(input, category) {
   }
 
   const seed = buildSeed(
-    `${category}|${input.wish}|${input.comment}|${input.audience}|${Date.now()}|${Math.random()}`
+    `${category}|${input.wish}|${input.comment}|${input.audience}|${Date.now()}`
   );
 
   return generateRussianBrandName(seed);
@@ -1131,9 +1280,8 @@ function generateRussianBrandName(seed) {
     "лен", "рон", "дара", "вель", "мира", "нта", "эль", "ора", "ина", "ея"
   ];
 
-  for (let attempt = 0; attempt < 8; attempt += 1) {
-    const s = (seed + attempt * 9973) >>> 0;
-
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const s = (seed + attempt * 9973 + Math.floor(Math.random() * 999)) >>> 0;
     const first = pickBySeed(starts, s, 3);
     const middle = pickBySeed(middles, s, 11);
     const end = pickBySeed(ends, s, 23);
@@ -1152,7 +1300,7 @@ function generateRussianBrandName(seed) {
     }
   }
 
-  return generateRussianBrandName((seed ^ 0x9e3779b9) >>> 0);
+  return "Лувидара"; // крайне редко; только если 10 попыток провалились
 }
 
 function buildFallbackInnovation(category, input) {
@@ -1181,7 +1329,6 @@ function buildFallbackUniqueness(category, input) {
   return `Уникальность строится на сочетании нового форм-фактора, ритуала использования и сильного брендового кода внутри категории "${category}".`;
 }
 
-// ======= ТВОЙ ОРИГИНАЛЬНЫЙ "БОГАТЫЙ" FALLBACK =======
 function guessDescriptor(category, input) {
   const text = `${category} ${input.wish} ${input.comment}`.toLowerCase();
 
@@ -1337,7 +1484,7 @@ function guessDescriptor(category, input) {
       `${dynamicName} выглядит сильным MVP, если сохранить предметность, ритуал и честную новизну без косметических улучшений.`
   };
 }
-// ======= /ТВОЙ ОРИГИНАЛЬНЫЙ FALLBACK =======
+// ======= /ТВОЙ “БОГАТЫЙ” FALLBACK =======
 
 function forceName(name, fallback) {
   const text = sanitizeText(name);
@@ -1472,7 +1619,7 @@ function extractFirstJson(content) {
 function safeParseJson(value) {
   try {
     return JSON.parse(value);
-  } catch {
+  } catch (error) {
     return null;
   }
 }
@@ -1560,29 +1707,10 @@ function readJson(req) {
   });
 }
 
-// ===== QA helpers =====
 function collectAllText(draft) {
   try {
     return JSON.stringify(draft || "");
   } catch {
     return String(draft || "");
   }
-}
-
-function detectNameDrift(draft) {
-  const headerName = sanitizeText(draft?.header?.name);
-  if (!headerName) return null;
-
-  const text = collectAllText(draft);
-
-  const m1 = text.match(/Название\s*[-—:]\s*([А-ЯЁ][А-Яа-яЁё0-9\-]{2,40})/);
-  if (m1 && m1[1] && m1[1] !== headerName) return m1[1];
-
-  const m2 = text.match(/([А-ЯЁ][А-Яа-яЁё0-9\-]{2,40})\s+выглядит\s+/);
-  if (m2 && m2[1] && m2[1] !== headerName) return m2[1];
-
-  const m3 = text.match(/([А-ЯЁ][А-Яа-яЁё0-9\-]{2,40})\s+—\s+это\s+/);
-  if (m3 && m3[1] && m3[1] !== headerName) return m3[1];
-
-  return null;
 }
