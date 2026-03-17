@@ -179,7 +179,6 @@ type FormState = {
   name: string;
   comment: string;
   uniqueness: string;
-  temperature: number;
   pain: string;
   audience: AudienceSets;
   diagnostics: Record<string, DiagnosticAnswer>;
@@ -188,7 +187,6 @@ type FormState = {
 type DraftData = {
   header?: DraftHeader;
   comment?: string;
-  temperature?: number;
   diagnostics?: Record<string, DiagnosticAnswer>;
   [key: string]: unknown;
 };
@@ -235,7 +233,6 @@ const createInitialForm = (): FormState => ({
   name: "",
   comment: "",
   uniqueness: "",
-  temperature: 0.7,
   pain: "",
   audience: {
     age: new Set<string>(),
@@ -304,19 +301,15 @@ export default function GeneratorForm({
     const category = header?.category ?? "";
     const preparedCategory = category;
     const audience = parseAudience(header.audience);
-    const rawUniqueness = initialDraft?.uniqueness;
+    const rawUniqueness = (initialDraft as any)?.uniqueness;
     const uniqueness =
       typeof rawUniqueness === "string" ? rawUniqueness : header?.unique ?? "";
     const comment =
       typeof initialDraft?.comment === "string"
         ? initialDraft.comment
-        : typeof initialDraft?.comment === "number"
-        ? String(initialDraft.comment)
+        : typeof (initialDraft as any)?.comment === "number"
+        ? String((initialDraft as any).comment)
         : "";
-    const temperature =
-      typeof initialDraft?.temperature === "number"
-        ? Math.min(1, Math.max(0, initialDraft.temperature))
-        : 0.7;
 
     setForm({
       category: preparedCategory,
@@ -324,10 +317,9 @@ export default function GeneratorForm({
       name: header?.name ?? "",
       comment,
       uniqueness,
-      temperature,
       pain: header?.pain ?? "",
       audience,
-      diagnostics: sanitizeDiagnostics(initialDraft?.diagnostics)
+      diagnostics: sanitizeDiagnostics((initialDraft as any)?.diagnostics)
     });
   }, [initialDraft]);
 
@@ -341,10 +333,6 @@ export default function GeneratorForm({
     () => Array.from(form.audience.group),
     [form.audience.group]
   );
-  const audienceDescription = useMemo(() => {
-    const segments = [...audienceAge, ...audienceGroups];
-    return segments.length ? segments.join(", ") : "";
-  }, [audienceAge, audienceGroups]);
 
   useEffect(() => {
     const ready = Boolean(trimmedCategory) && Boolean(form.pain.trim());
@@ -416,7 +404,7 @@ export default function GeneratorForm({
 
   const handleGeneratePains = useCallback(() => {
     const selectedAge = audienceAge.length > 0 ? audienceAge[0] : null;
-    
+
     if (!selectedAge) {
       setPains([]);
       setSelectedPains([]);
@@ -424,8 +412,8 @@ export default function GeneratorForm({
     }
 
     const ageKey = selectedAge.replace(/\sлет$/u, "");
-    const painsForAge = painsByAge[ageKey as keyof typeof painsByAge] || [];
-    
+    const painsForAge = (painsByAge as any)[ageKey] || [];
+
     setPains(painsForAge);
     setSelectedPains([]);
   }, [audienceAge]);
@@ -446,10 +434,10 @@ export default function GeneratorForm({
   const handleSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
-      
+
       // Сразу прокручиваем наверх при нажатии на кнопку
       onSubmitStart?.();
-      
+
       const categoryValue = trimmedCategory;
       const painValue = form.pain.trim();
 
@@ -476,7 +464,6 @@ export default function GeneratorForm({
             comment: form.comment.trim() || undefined,
             name: form.name.trim() || undefined,
             uniqueness: form.uniqueness.trim() || undefined,
-            temperature: Number(form.temperature),
             diagnostics: form.diagnostics,
             projectId: projectId || undefined
           })
@@ -511,9 +498,11 @@ export default function GeneratorForm({
       form.comment,
       form.name,
       form.pain,
-      form.temperature,
+      form.uniqueness,
+      form.diagnostics,
       onDraftGenerated,
-      projectId
+      projectId,
+      onSubmitStart
     ]
   );
 
@@ -592,33 +581,6 @@ export default function GeneratorForm({
           placeholder='Введите любые пожелание, если есть, например: "Хочу вкусный мясной  батончик, который можно есть после спортзала для роста мышц" или "Хочу женский изысканный десерт на основе молока, который может заменить обед и который будет помещаться в дамскую сумочку без боязни испачкать или испортиться"'
           value={form.comment}
           onChange={(event) => updateField("comment", event.target.value)}
-        />
-      </div>
-
-      <div className="flex flex-col gap-2 rounded-2xl bg-white/60 backdrop-blur-sm p-4 md:p-5">
-        <label
-          className="text-xs md:text-sm font-semibold uppercase tracking-wide text-neutral-600"
-          htmlFor="temperature"
-        >
-          Креативность
-        </label>
-        <p className="text-xs text-neutral-500">
-          Задайте уровень креативности
-        </p>
-        <input
-          id="temperature"
-          type="range"
-          min="0"
-          max="1"
-          step="0.1"
-          value={form.temperature}
-          onChange={(event) =>
-            updateField(
-              "temperature",
-              Number(event.target.value) as FormState["temperature"]
-            )
-          }
-          className="accent-[#ff4d4f]"
         />
       </div>
 
@@ -710,7 +672,6 @@ export default function GeneratorForm({
           onChange={(event) => updateField("pain", event.target.value)}
         />
 
-        {/* Постоянный блок "Сгенерированные боли" */}
         <div className="mt-4 p-4 bg-white rounded-xl shadow-sm border">
           <h3 className="text-sm font-semibold mb-2">Примеры боли</h3>
           {pains.length === 0 ? (
@@ -775,8 +736,7 @@ export default function GeneratorForm({
                     <p className="text-sm text-neutral-700">{question.text}</p>
                     <div className="flex items-center gap-2">
                       {(["yes", "no"] as const).map((option) => {
-                        const isActive =
-                          form.diagnostics[question.id] === option;
+                        const isActive = form.diagnostics[question.id] === option;
                         return (
                           <button
                             key={option}
@@ -786,9 +746,7 @@ export default function GeneratorForm({
                                 ? "bg-[#FF5B5B] text-white shadow-[0_10px_20px_rgba(255,91,91,0.35)]"
                                 : "border border-neutral-200 bg-white/80 text-neutral-600 hover:border-[#ff4d4f]/60 hover:text-[#ff4d4f]"
                             }`}
-                            onClick={() =>
-                              handleDiagnosticAnswer(question.id, option)
-                            }
+                            onClick={() => handleDiagnosticAnswer(question.id, option)}
                           >
                             {option === "yes" ? "Да" : "Нет"}
                           </button>
