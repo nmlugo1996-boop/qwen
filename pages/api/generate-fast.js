@@ -137,32 +137,51 @@ const OUTPUT_SCHEMA_TEXT = `
 11. Нельзя брать слова пользователя и просто собирать из них название товара.
 12. Нельзя возвращать пустые абстрактные фразы вроде "удобный формат", "современный продукт", "понятная выгода", "реальный товар".
 13. Сначала мысленно придумай 3 разных концепции, затем выбери лучший и только его верни в JSON.
+14. Пиши ТОЛЬКО ПО-РУССКИ. Никакой латиницы, китайских/японских/корейских символов.
+15. Имя продукта должно быть ОДИНАКОВЫМ во всём JSON: header.name = то же имя везде.
 `;
 
+// анти-повторы имён + запреты на референсы
 const BAD_NAME_PATTERNS = [
-  // служебные/общие
   "новая полка",
   "полярный продукт",
   "новая привычка",
   "полярный выбор",
   "товар",
   "продукт",
-  // “липкие” повторяющиеся, которые ты видел
   "утрянка",
+  "шоковсянка",
   "сетка",
   "подход",
   "контур",
-  // референсы — запрещаем использовать как название
-  "шоковсянка",
   "мясовой код",
   "мясовоикод",
   "мясовойкод"
 ];
 
+const GENERIC_PHRASES = [
+  "удобный формат",
+  "современный продукт",
+  "понятная выгода",
+  "в социальных сетях",
+  "инновационный продукт",
+  "уникальный продукт",
+  "для широкой аудитории",
+  "премиальный сегмент",
+  "активные люди",
+  "высокое качество",
+  "для всей семьи"
+];
+
+// CJK ranges: Hiragana/Katakana/CJK Unified + Extension A
+const CJK_RE = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/;
+// латиница
+const LATIN_RE = /[A-Za-z]/;
+
 function safeRead(absPath) {
   try {
     return fs.readFileSync(absPath, "utf8");
-  } catch (error) {
+  } catch {
     return "";
   }
 }
@@ -170,13 +189,12 @@ function safeRead(absPath) {
 function getReferenceFiles() {
   try {
     if (!fs.existsSync(REF_DIR)) return [];
-
     return fs
       .readdirSync(REF_DIR)
       .filter((file) => /\.(md|txt)$/i.test(file))
       .filter((file) => file !== "passport_prompt.txt")
       .sort();
-  } catch (error) {
+  } catch {
     return [];
   }
 }
@@ -242,7 +260,7 @@ export default async function handler(req, res) {
       req.body && typeof req.body === "object"
         ? req.body
         : await readJson(req);
-  } catch (error) {
+  } catch {
     res.status(400).json({ error: "Invalid JSON payload" });
     return;
   }
@@ -306,7 +324,7 @@ async function callTextModel(messages, temperature) {
   };
 
   try {
-    // 1) пробуем с response_format (если провайдер поддерживает)
+    // 1) пробуем с response_format
     let response = await fetch(process.env.QWEN_API_URL, {
       method: "POST",
       headers: {
@@ -320,8 +338,7 @@ async function callTextModel(messages, temperature) {
       signal: controller ? controller.signal : undefined
     });
 
-    // 2) если response_format не поддержан (частая причина падения в fallback),
-    // делаем повтор запроса без response_format
+    // 2) если response_format не поддерживается — повторяем без него
     if (!response.ok) {
       const text = await response.text().catch(() => "");
       const looksLikeResponseFormatIssue =
@@ -481,12 +498,19 @@ function normalizeAudience(source) {
 
   const parts = [];
 
-  if (audienceText) parts.push(audienceText);
-  if (age) parts.push(`Возраст: ${age}`);
-  if (gender) parts.push(`Пол: ${gender}`);
-  if (decision) parts.push(`Кто выбирает/покупает: ${decision}`);
+  if (audienceText && !/неважно|любые|все подряд/i.test(audienceText)) parts.push(audienceText);
+  if (age && !/неважно|любые|все подряд/i.test(age)) parts.push(`Возраст: ${age}`);
+  if (gender && !/неважно|любые|все подряд/i.test(gender)) parts.push(`Пол: ${gender}`);
+  if (decision && !/неважно|любые|все подряд/i.test(decision)) parts.push(`Кто выбирает/покупает: ${decision}`);
 
-  return parts.join(". ").trim();
+  const joined = parts.join(". ").trim();
+
+  return joined
+    .replace(/\bНеважно\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\. \./g, ".")
+    .replace(/\.\s*\./g, ".")
+    .trim();
 }
 
 function normalizeCreativity(value) {
@@ -509,11 +533,9 @@ function creativityToTemperature(creativity) {
 
 function normalizeDiagnostics(raw) {
   const result = {};
-
   if (!raw || typeof raw !== "object") return result;
 
-  const entries = Object.entries(raw);
-  entries.forEach(([key, value]) => {
+  Object.entries(raw).forEach(([key, value]) => {
     result[key] = normalizeYesNo(value);
   });
 
@@ -543,10 +565,10 @@ function buildUserMessage(input) {
     "ТВОЯ ЗАДАЧА — СНАЧАЛА ПРИДУМАТЬ ОДИН НОВЫЙ ПРОДУКТ, А ПОТОМ ЗАПОЛНИТЬ ПАСПОРТ ИМЕННО ПРО НЕГО.",
     "",
     "ПОРЯДОК РАБОТЫ ОБЯЗАТЕЛЕН:",
-    "1. Сначала придумай 3 разных продуктовых концепции внутри заданной категории (НЕ ПИШИ ИХ В ОТВЕТ).",
-    "2. Оцени их по 4 критериям: новизна, понятность, физическая реализуемость, коммерческий потенциал.",
-    "3. Выбери один самый сильный вариант.",
-    "4. Только после этого заполни JSON-паспорт про этот один выбранный продукт.",
+    "1) Внутренне придумай 3 разных продуктовых концепции внутри категории (НЕ ПИШИ ИХ В ОТВЕТ).",
+    "2) Выбери один самый сильный вариант: новизна + физическая реализуемость + коммерческий потенциал + ясная сцена использования.",
+    "3) Зафиксируй ОДИН продукт: что это, форма/размер/масса, как открывается, как используется, в чём новизна.",
+    "4) Только после этого заполни JSON-паспорт про этот один выбранный продукт.",
     "",
     "ЗАПРЕЩЕНО:",
     "- пересказывать входные данные как готовый ответ;",
@@ -554,12 +576,7 @@ function buildUserMessage(input) {
     "- брать слова пользователя и просто делать из них название;",
     "- делать абстрактный продукт без физической формы и реального сценария;",
     "- использовать в названии или копировать референсные/липкие имена (Утрянка, Шоковсянка, Сетка, Подход, Контур и т.п.);",
-    "",
-    "ПРОДУКТ ДОЛЖЕН БЫТЬ:",
-    "- новым;",
-    "- физически понятным;",
-    "- пригодным для MVP;",
-    "- достаточно сильным, чтобы выглядеть как новый подсегмент или новая товарная логика;",
+    "- писать что-либо не по-русски; никакой латиницы и CJK-символов;",
     "",
     "ВХОДНЫЕ ДАННЫЕ:",
     `Категория: ${input.category || "-"}`,
@@ -594,26 +611,31 @@ function buildUserMessage(input) {
 
   parts.push("");
   parts.push("ВЕРНИ ТОЛЬКО JSON БЕЗ MARKDOWN И БЕЗ ПОЯСНЕНИЙ.");
-
   return parts.join("\n");
 }
 
 function buildRepairMessage(draft, input) {
   const problems = collectProblems(draft, input);
+  const fixedName = sanitizeText(draft?.header?.name) || "";
 
   return [
-    "Исправь предыдущий JSON.",
-    "Сделай новый JSON целиком с нуля.",
-    "Не патч предыдущий ответ, а перепридумай продукт заново.",
-    "Сначала создай один новый продукт, потом заново ответь на все вопросы паспорта уже про него.",
-    "Нельзя использовать прежнее название, если оно слабое, шаблонное, референсное или повторяющееся.",
-    "Нельзя повторять входные слова пользователя как готовый продукт.",
+    "Ты провалил требования качества. Сделай новый JSON ЦЕЛИКОМ С НУЛЯ.",
+    "НЕ ПАТЧ предыдущий ответ. ПЕРЕПРИДУМАЙ продукт заново, но строго в рамках категории и боли.",
     "",
-    "Проблемы, которые нужно устранить:",
+    "ОБЯЗАТЕЛЬНО:",
+    "- Пиши ТОЛЬКО ПО-РУССКИ. Никаких иероглифов, латиницы, смешанных языков.",
+    "- Имя продукта должно быть ОДНО и ТО ЖЕ везде: header.name и упоминания по тексту.",
+    fixedName
+      ? `- В предыдущей попытке имя было: "${fixedName}". Если оно хорошее — используй это имя везде без замены. Если оно слабое/служебное — придумай новое и используй его везде.`
+      : "",
+    "",
+    "ПРОБЛЕМЫ, КОТОРЫЕ НУЖНО УСТРАНИТЬ:",
     ...problems.map((p, idx) => `${idx + 1}. ${p}`),
     "",
     "Верни только JSON."
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 function collectProblems(draft, input) {
@@ -627,9 +649,14 @@ function collectProblems(draft, input) {
   const appearance = sanitizeText(draft?.product_core?.appearance).toLowerCase();
   const usage = sanitizeText(draft?.product_core?.usage).toLowerCase();
 
-  if (!name || isWeakName(name)) {
-    problems.push("Название слабое, шаблонное, референсное или служебное.");
-  }
+  const allText = collectAllText(draft);
+  if (CJK_RE.test(allText)) problems.push("В ответе есть CJK-символы (китайский/японский/корейский). Это запрещено.");
+  if (LATIN_RE.test(allText)) problems.push("В ответе есть латиница. Это запрещено (пиши только по-русски).");
+
+  const drift = detectNameDrift(draft);
+  if (drift) problems.push(`Обнаружен дрейф имени продукта: найдено другое имя "${drift}" вместо header.name.`);
+
+  if (!name || isWeakName(name)) problems.push("Название слабое, шаблонное, референсное или служебное.");
 
   if (!category || looksLikeUserComment(category, input)) {
     problems.push("Поле category заполнено не товарной категорией.");
@@ -647,13 +674,8 @@ function collectProblems(draft, input) {
     problems.push("Поле product_core.physical_form не описывает физический объект предметно.");
   }
 
-  if (isWeakGeneric(appearance)) {
-    problems.push("Поле product_core.appearance слишком общее.");
-  }
-
-  if (isWeakGeneric(usage)) {
-    problems.push("Поле product_core.usage слишком общее.");
-  }
+  if (isWeakGeneric(appearance)) problems.push("Поле product_core.appearance слишком общее.");
+  if (isWeakGeneric(usage)) problems.push("Поле product_core.usage слишком общее.");
 
   if (repeatsInputTooDirectly(draft, input)) {
     problems.push("Ответ слишком прямо повторяет входные слова пользователя.");
@@ -670,18 +692,24 @@ function collectProblems(draft, input) {
 
 function needsRepair(draft, input) {
   const problems = collectProblems(draft, input);
+
+  // жёсткий триггер: дрейф имени / не-русский текст
+  const hard = problems.some((p) =>
+    p.toLowerCase().includes("дрейф имени") ||
+    p.toLowerCase().includes("cjk") ||
+    p.toLowerCase().includes("латиниц")
+  );
+  if (hard) return true;
+
   return problems.length >= 2;
 }
 
 function isWeakName(name) {
   const n = String(name || "").toLowerCase().trim();
   if (!n) return true;
-
-  // латиница запрещена
-  if (/[A-Za-z]/.test(n)) return true;
-  // должна быть кириллица
+  if (LATIN_RE.test(n)) return true;
   if (!/[А-Яа-яЁё]/.test(n)) return true;
-
+  if (n.length < 3) return true;
   return BAD_NAME_PATTERNS.some((bad) => n.includes(bad));
 }
 
@@ -725,7 +753,7 @@ function isWeakPhysical(text) {
 
   if (
     !/\d/.test(text) &&
-    !/(г|гр|мл|мм|см|шт|сегмент|порци|батон|пачк|стакан|банка|тюбик|дойпак|брикет|капсул|кусоч|слайс|ролл|куб)/.test(
+    !/(г|гр|кг|мл|л|мм|см|шт|сегмент|порци|батон|пачк|стакан|банка|тюбик|дойпак|брикет|капсул|кусоч|слайс|ролл|куб|флоу\-пак|короб)/.test(
       text
     )
   ) {
@@ -763,7 +791,9 @@ function hasTooManyGenericBlocks(draft) {
   });
 
   const weakCount = texts.filter((text) => {
+    const genericHit = GENERIC_PHRASES.some((p) => text.includes(p));
     return (
+      genericHit ||
       text.includes("продукт должен") ||
       text.includes("выбираем") ||
       text.includes("строится вокруг") ||
@@ -883,8 +913,14 @@ function normalizeProductCore(rawCore, fallback) {
     appearance: pickNonEmpty(sanitizeText(rawCore?.appearance), fb.appearance),
     composition: pickNonEmpty(sanitizeText(rawCore?.composition), fb.composition),
     usage: pickNonEmpty(sanitizeText(rawCore?.usage), fb.usage),
-    novelty_mechanism: pickNonEmpty(sanitizeText(rawCore?.novelty_mechanism), fb.novelty_mechanism),
-    why_people_will_try_it: pickNonEmpty(sanitizeText(rawCore?.why_people_will_try_it), fb.why_people_will_try_it)
+    novelty_mechanism: pickNonEmpty(
+      sanitizeText(rawCore?.novelty_mechanism),
+      fb.novelty_mechanism
+    ),
+    why_people_will_try_it: pickNonEmpty(
+      sanitizeText(rawCore?.why_people_will_try_it),
+      fb.why_people_will_try_it
+    )
   };
 }
 
@@ -1000,7 +1036,14 @@ function buildFallbackDraft(input) {
   };
 
   return {
-    header: { category, name, audience, pain, innovation, uniqueness },
+    header: {
+      category,
+      name,
+      audience,
+      pain,
+      innovation,
+      uniqueness
+    },
     product_core: {
       one_liner: descriptor.oneLiner,
       physical_form: descriptor.physicalForm,
@@ -1041,7 +1084,7 @@ function buildFallbackName(input, category) {
   const preferred = sanitizeText(input.name);
   if (
     preferred &&
-    !/[A-Za-z]/.test(preferred) &&
+    !LATIN_RE.test(preferred) &&
     /[А-Яа-яЁё]/.test(preferred) &&
     !isWeakName(preferred.toLowerCase())
   ) {
@@ -1088,8 +1131,6 @@ function generateRussianBrandName(seed) {
     "лен", "рон", "дара", "вель", "мира", "нта", "эль", "ора", "ина", "ея"
   ];
 
-  // раньше тут мог появляться фиксированный "Лавира" — это давало повторяемость
-  // теперь делаем несколько попыток с изменением seed, пока не получится нормальное имя
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const s = (seed + attempt * 9973) >>> 0;
 
@@ -1111,7 +1152,6 @@ function generateRussianBrandName(seed) {
     }
   }
 
-  // крайний случай — генерим ещё один seed и пробуем заново (без фиксированного имени)
   return generateRussianBrandName((seed ^ 0x9e3779b9) >>> 0);
 }
 
@@ -1141,9 +1181,8 @@ function buildFallbackUniqueness(category, input) {
   return `Уникальность строится на сочетании нового форм-фактора, ритуала использования и сильного брендового кода внутри категории "${category}".`;
 }
 
+// ======= ТВОЙ ОРИГИНАЛЬНЫЙ "БОГАТЫЙ" FALLBACK =======
 function guessDescriptor(category, input) {
-  // твоя логика ниже оставлена без изменений (она уже достаточно предметная).
-  // Она работает как fallback-описатель, когда модель не отдала сильный ответ.
   const text = `${category} ${input.wish} ${input.comment}`.toLowerCase();
 
   if (/(батон|спорт|зал|трен|энерг)/.test(text)) {
@@ -1298,11 +1337,12 @@ function guessDescriptor(category, input) {
       `${dynamicName} выглядит сильным MVP, если сохранить предметность, ритуал и честную новизну без косметических улучшений.`
   };
 }
+// ======= /ТВОЙ ОРИГИНАЛЬНЫЙ FALLBACK =======
 
 function forceName(name, fallback) {
   const text = sanitizeText(name);
   if (!text) return fallback;
-  if (/[A-Za-z]/.test(text)) return fallback;
+  if (LATIN_RE.test(text)) return fallback;
   if (!/[А-Яа-яЁё]/.test(text)) return fallback;
   if (isWeakName(text.toLowerCase())) return fallback;
   if (text.length < 3) return fallback;
@@ -1432,7 +1472,7 @@ function extractFirstJson(content) {
 function safeParseJson(value) {
   try {
     return JSON.parse(value);
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -1518,4 +1558,31 @@ function readJson(req) {
 
     req.on("error", reject);
   });
+}
+
+// ===== QA helpers =====
+function collectAllText(draft) {
+  try {
+    return JSON.stringify(draft || "");
+  } catch {
+    return String(draft || "");
+  }
+}
+
+function detectNameDrift(draft) {
+  const headerName = sanitizeText(draft?.header?.name);
+  if (!headerName) return null;
+
+  const text = collectAllText(draft);
+
+  const m1 = text.match(/Название\s*[-—:]\s*([А-ЯЁ][А-Яа-яЁё0-9\-]{2,40})/);
+  if (m1 && m1[1] && m1[1] !== headerName) return m1[1];
+
+  const m2 = text.match(/([А-ЯЁ][А-Яа-яЁё0-9\-]{2,40})\s+выглядит\s+/);
+  if (m2 && m2[1] && m2[1] !== headerName) return m2[1];
+
+  const m3 = text.match(/([А-ЯЁ][А-Яа-яЁё0-9\-]{2,40})\s+—\s+это\s+/);
+  if (m3 && m3[1] && m3[1] !== headerName) return m3[1];
+
+  return null;
 }
