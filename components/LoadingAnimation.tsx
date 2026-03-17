@@ -14,88 +14,107 @@ type Stage = {
   icon: string;
 };
 
-const STAGES: Stage[] = [
-  { id: "a", title: "Концепт", description: "Придумываю новый продукт и форм-фактор", threshold: 0, icon: "🧩" },
-  { id: "b", title: "Новизна", description: "Фиксирую, в чём инновация и почему попробуют", threshold: 26, icon: "✨" },
-  { id: "c", title: "Паспорт", description: "Собираю когнитивный и сенсорный блоки", threshold: 52, icon: "🧠" },
-  { id: "d", title: "Бренд", description: "Собираю брендинговую и маркетинговую логику", threshold: 74, icon: "🏷️" },
-  { id: "e", title: "Финал", description: "Делаю итоговый паспорт и проверяю структуру", threshold: 90, icon: "✅" }
-];
-
 type Particle = {
-  id: string;
+  id: number;
   x: number;
   y: number;
-  size: number;
   delay: number;
+  size: number;
 };
 
-const buildParticles = () => {
-  const count = 12;
-  const list: Particle[] = [];
-  for (let i = 0; i < count; i += 1) {
-    list.push({
-      id: `p-${i}-${Math.random().toString(16).slice(2)}`,
-      x: Math.round(Math.random() * 90) + 5,
-      y: Math.round(Math.random() * 80) + 10,
-      size: Math.round(Math.random() * 8) + 6,
-      delay: Math.random() * 2.6
-    });
+const STAGES: Stage[] = [
+  {
+    id: "concept",
+    title: "Концепт",
+    description: "Придумываю новый продукт и форм-фактор",
+    threshold: 0,
+    icon: "🧩"
+  },
+  {
+    id: "novelty",
+    title: "Новизна",
+    description: "Фиксирую, в чём инновация и почему попробуют",
+    threshold: 22,
+    icon: "✨"
+  },
+  {
+    id: "passport",
+    title: "Паспорт",
+    description: "Собираю когнитивный и сенсорный блоки",
+    threshold: 46,
+    icon: "🧠"
+  },
+  {
+    id: "brand",
+    title: "Бренд",
+    description: "Собираю брендинговую и маркетинговую логику",
+    threshold: 68,
+    icon: "🏷️"
+  },
+  {
+    id: "final",
+    title: "Финал",
+    description: "Делаю итоговый паспорт и проверяю структуру",
+    threshold: 88,
+    icon: "✅"
   }
-  return list;
-};
+];
 
-export default function LoadingAnimation({ isVisible }: LoadingAnimationProps) {
-  const [progress, setProgress] = useState(0);
-  const [dots, setDots] = useState("");
-  const [particles] = useState<Particle[]>(() => buildParticles());
-
-  const [mounted, setMounted] = useState(false);
-  const [showExitFlash, setShowExitFlash] = useState(false);
+export default function LoadingAnimation({
+  isVisible
+}: LoadingAnimationProps) {
+  const [progress, setProgress] = useState<number>(0);
+  const [dots, setDots] = useState<string>("");
+  const [particles, setParticles] = useState<Particle[]>([]);
+  const [showExitFlash, setShowExitFlash] = useState<boolean>(false);
 
   useEffect(() => {
-    if (isVisible) {
-      setMounted(true);
-      setShowExitFlash(false);
-      setProgress(0);
+    if (!isVisible) {
+      setParticles([]);
       return;
     }
 
-    if (mounted) {
-      setShowExitFlash(true);
-      const t1 = setTimeout(() => setShowExitFlash(false), 520);
-      const t2 = setTimeout(() => setMounted(false), 560); // дождаться fade-out
-      return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-      };
-    }
-  }, [isVisible, mounted]);
+    const nextParticles: Particle[] = Array.from({ length: 14 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      delay: Math.random() * 2.2,
+      size: Math.random() * 6 + 4
+    }));
+
+    setParticles(nextParticles);
+  }, [isVisible]);
 
   useEffect(() => {
-    if (!isVisible) return;
+    if (!isVisible) {
+      if (progress > 0) {
+        setProgress(100);
+        setShowExitFlash(true);
 
-    let raf: number | null = null;
-    let start = performance.now();
+        const t = setTimeout(() => {
+          setShowExitFlash(false);
+          setProgress(0);
+        }, 420);
 
-    const tick = (now: number) => {
-      const elapsed = now - start;
+        return () => clearTimeout(t);
+      }
 
-      // плавное приближение к 95%, чтобы не “доскакать” до 100%
-      const target = Math.min(95, 8 + (elapsed / 1000) * 12);
+      return;
+    }
+
+    const interval = setInterval(() => {
       setProgress((prev) => {
-        const next = prev + (target - prev) * 0.10;
-        return Math.min(99, next);
+        if (prev >= 92) return prev;
+
+        if (prev < 20) return prev + Math.random() * 4.2;
+        if (prev < 45) return prev + Math.random() * 3.1;
+        if (prev < 70) return prev + Math.random() * 2.2;
+        return prev + Math.random() * 1.1;
       });
+    }, 260);
 
-      raf = requestAnimationFrame(tick);
-    };
-
-    raf = requestAnimationFrame(tick);
-    return () => {
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, [isVisible]);
+    return () => clearInterval(interval);
+  }, [isVisible, progress]);
 
   useEffect(() => {
     if (!isVisible) {
@@ -104,7 +123,10 @@ export default function LoadingAnimation({ isVisible }: LoadingAnimationProps) {
     }
 
     const interval = setInterval(() => {
-      setDots((prev) => (prev === "..." ? "" : prev + "."));
+      setDots((prev) => {
+        if (prev === "...") return "";
+        return prev + ".";
+      });
     }, 450);
 
     return () => clearInterval(interval);
@@ -117,38 +139,30 @@ export default function LoadingAnimation({ isVisible }: LoadingAnimationProps) {
 
   const progressLabel = Math.max(8, Math.min(99, Math.round(progress)));
 
-  if (!mounted) return null;
+  if (!isVisible && !showExitFlash) return null;
 
   return (
-    <>
-      {/* Мягкий фон/бэкдроп */}
-      <div
-        className={[
-          "fixed inset-0 z-[65] bg-white/55 backdrop-blur-sm transition-opacity duration-300",
-          isVisible ? "opacity-100" : "opacity-0"
-        ].join(" ")}
-      />
+    <div className="fixed inset-0 z-[80]">
+      {/* Плотный фон, почти не просвечивает сайт */}
+      <div className="absolute inset-0 bg-[rgba(248,244,242,0.94)]" />
 
-      {/* Панель */}
-      <div
-        className={[
-          "fixed top-4 left-1/2 z-[70] w-[min(980px,calc(100vw-24px))] -translate-x-1/2",
-          "transition-all duration-300 ease-out",
-          isVisible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 -translate-y-2 scale-[0.985]"
-        ].join(" ")}
-      >
-        <div className="relative overflow-hidden rounded-[28px] border border-white/70 bg-white/92 shadow-[0_24px_80px_rgba(0,0,0,0.14)] backdrop-blur-xl">
+      {/* Очень мягкий декоративный градиент вместо стеклянной прозрачности */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,120,100,0.10),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(255,160,130,0.08),transparent_30%)]" />
+
+      <div className="absolute top-4 left-1/2 z-[81] w-[min(980px,calc(100vw-24px))] -translate-x-1/2 px-0">
+        <div className="relative overflow-hidden rounded-[28px] border border-[#E8D7D1] bg-[#FFFDFC] shadow-[0_24px_70px_rgba(0,0,0,0.12)]">
           {showExitFlash ? (
-            <div className="pointer-events-none absolute inset-0 animate-pulse bg-gradient-to-r from-[#FF8A7A]/20 via-white/40 to-[#FF6B5B]/20" />
+            <div className="pointer-events-none absolute inset-0 animate-pulse bg-gradient-to-r from-[#FF8A7A]/10 via-white/35 to-[#FF6B5B]/10" />
           ) : null}
 
           <div className="grid grid-cols-1 md:grid-cols-[260px_minmax(0,1fr)]">
-            <div className="relative overflow-hidden border-b border-neutral-200/70 bg-[#FFF4F1] md:border-b-0 md:border-r">
+            {/* Левая колонка */}
+            <div className="relative overflow-hidden border-b border-[#E8D7D1] bg-[#FFF4F1] md:border-b-0 md:border-r">
               <div className="absolute inset-0">
                 {particles.map((particle) => (
                   <span
                     key={particle.id}
-                    className="absolute rounded-full bg-[#FF8A7A]/40"
+                    className="absolute rounded-full bg-[#FF8A7A]/35"
                     style={{
                       left: `${particle.x}%`,
                       top: `${particle.y}%`,
@@ -161,21 +175,22 @@ export default function LoadingAnimation({ isVisible }: LoadingAnimationProps) {
               </div>
 
               <div className="relative flex h-full min-h-[230px] flex-col items-center justify-center px-6 py-8">
-                <div className="mb-6 rounded-full bg-white/75 px-4 py-2 text-sm font-medium text-[#7A3A34] shadow-sm">
+                <div className="mb-6 rounded-full border border-[#F2D6CF] bg-white px-4 py-2 text-sm font-medium text-[#7A3A34] shadow-sm">
                   {currentStage.icon} {currentStage.title}
                 </div>
 
                 <div className="relative flex h-32 w-32 items-center justify-center">
-                  <div className="absolute h-32 w-32 rounded-full border border-[#FFB8AD]/40" />
-                  <div className="absolute h-24 w-24 rounded-full border border-[#FF9A8A]/35" />
-                  <div className="absolute h-16 w-16 rounded-full border border-[#FF7B68]/30" />
-                  <div className="h-14 w-14 rounded-full bg-gradient-to-br from-[#FF9C8A] via-[#FF7C6A] to-[#FF5B5B] shadow-[0_0_34px_rgba(255,107,91,0.35)]" />
-                  <div className="absolute h-6 w-6 rounded-full bg-white/90" />
+                  <div className="absolute h-32 w-32 rounded-full border border-[#F5C8BE]" />
+                  <div className="absolute h-24 w-24 rounded-full border border-[#F6B7A9]" />
+                  <div className="absolute h-16 w-16 rounded-full border border-[#F89D8C]" />
+                  <div className="h-14 w-14 rounded-full bg-gradient-to-br from-[#FF9C8A] via-[#FF7C6A] to-[#FF5B5B] shadow-[0_0_24px_rgba(255,107,91,0.25)]" />
+                  <div className="absolute h-6 w-6 rounded-full bg-white" />
                 </div>
               </div>
             </div>
 
-            <div className="px-6 py-6 md:px-8 md:py-7">
+            {/* Правая колонка */}
+            <div className="bg-[#FFFCFB] px-6 py-6 md:px-8 md:py-7">
               <div className="flex flex-col gap-2">
                 <p className="text-sm uppercase tracking-[0.22em] text-neutral-400">
                   Идёт генерация
@@ -183,13 +198,13 @@ export default function LoadingAnimation({ isVisible }: LoadingAnimationProps) {
                 <h2 className="max-w-[640px] text-2xl font-semibold leading-tight text-neutral-900 md:text-[42px] md:leading-[1.02]">
                   Собираю новый продуктовый объект
                 </h2>
-                <p className="max-w-[680px] text-base text-neutral-500 md:text-[18px]">
+                <p className="max-w-[680px] text-base text-neutral-600 md:text-[18px]">
                   {currentStage.description}
                 </p>
               </div>
 
               <div className="mt-6">
-                <div className="relative h-3 overflow-hidden rounded-full bg-[#F4D9D3]">
+                <div className="relative h-3 overflow-hidden rounded-full bg-[#F1D6CF]">
                   <div
                     className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-[#FF6159] to-[#FF9B7A] transition-all duration-500 ease-out"
                     style={{ width: `${progressLabel}%` }}
@@ -202,7 +217,7 @@ export default function LoadingAnimation({ isVisible }: LoadingAnimationProps) {
                 </div>
               </div>
 
-              <div className="mt-5 rounded-3xl bg-[#FFF3F0] px-5 py-4">
+              <div className="mt-5 rounded-3xl border border-[#F0DDD7] bg-[#FFF3F0] px-5 py-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-neutral-400">
                   Сейчас происходит
                 </p>
@@ -212,7 +227,7 @@ export default function LoadingAnimation({ isVisible }: LoadingAnimationProps) {
               </div>
 
               <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
-                {STAGES.map((stage) => {
+                {STAGES.map((stage, index) => {
                   const isDone = progress >= stage.threshold + 14;
                   const isActive = currentStage.id === stage.id;
 
@@ -222,16 +237,22 @@ export default function LoadingAnimation({ isVisible }: LoadingAnimationProps) {
                       className={[
                         "rounded-3xl border px-4 py-4 transition-all duration-300",
                         isActive
-                          ? "border-[#FF9B8A] bg-[#FFF5F2] shadow-[0_6px_20px_rgba(255,120,100,0.12)]"
+                          ? "border-[#FFB09E] bg-[#FFF5F2] shadow-[0_8px_20px_rgba(255,120,100,0.10)]"
                           : isDone
-                            ? "border-neutral-200/70 bg-white/85"
-                            : "border-neutral-200/50 bg-white/60"
+                            ? "border-[#EAD7D0] bg-white"
+                            : "border-[#EEE2DD] bg-[#FFFCFB]"
                       ].join(" ")}
                     >
-                      <p className="text-sm font-semibold text-neutral-800">
-                        {stage.icon} {stage.title}
+                      <p className="text-xs uppercase tracking-[0.18em] text-neutral-400">
+                        Этап {index + 1}
                       </p>
-                      <p className="mt-1 text-sm text-neutral-500">
+                      <div className="mt-2 flex items-center gap-2 text-[18px] text-neutral-700">
+                        <span>{stage.icon}</span>
+                        <span className={isActive ? "font-semibold text-neutral-900" : ""}>
+                          {stage.title}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm leading-snug text-neutral-500">
                         {stage.description}
                       </p>
                     </div>
@@ -240,25 +261,25 @@ export default function LoadingAnimation({ isVisible }: LoadingAnimationProps) {
               </div>
             </div>
           </div>
-
-          <style jsx>{`
-            @keyframes floatParticle {
-              0% {
-                transform: translateY(0);
-                opacity: 0.45;
-              }
-              50% {
-                transform: translateY(-14px);
-                opacity: 0.9;
-              }
-              100% {
-                transform: translateY(0);
-                opacity: 0.45;
-              }
-            }
-          `}</style>
         </div>
       </div>
-    </>
+
+      <style jsx>{`
+        @keyframes floatParticle {
+          0% {
+            transform: translateY(0px) scale(0.9);
+            opacity: 0.22;
+          }
+          50% {
+            transform: translateY(-12px) scale(1.12);
+            opacity: 0.55;
+          }
+          100% {
+            transform: translateY(0px) scale(0.9);
+            opacity: 0.22;
+          }
+        }
+      `}</style>
+    </div>
   );
 }
