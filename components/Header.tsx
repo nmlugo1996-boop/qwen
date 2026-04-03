@@ -134,7 +134,7 @@ export default function Header() {
               Кабинет
             </Link>
             <Link
-              href="/api/auth/signin"
+              href="/login"
               className="rounded-lg bg-white/5 px-3 py-2 text-sm text-white transition hover:bg-white/10"
             >
               Войти
@@ -217,7 +217,7 @@ export default function Header() {
               Кабинет
             </Link>
             <Link
-              href="/api/auth/signin"
+              href="/login"
               onClick={close}
               className="rounded-lg border border-white/10 px-3.5 py-2 text-sm font-semibold text-white/85 transition hover:bg-white/10 hover:text-white"
             >
