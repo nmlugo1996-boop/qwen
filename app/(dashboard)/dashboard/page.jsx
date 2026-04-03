@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { createBrowserClient } from "../../lib/supabaseClient";
+import { createBrowserClient } from "../../../lib/supabaseClient";
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
