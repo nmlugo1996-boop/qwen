@@ -1,4 +1,4 @@
-import { adminClient, createServerClient } from "./supabaseClient";
+import { adminClient, supaServer } from "./supabaseClient";
 import { cookies } from "next/headers";
 import { v4 as uuid } from "uuid";
 
@@ -13,7 +13,7 @@ import { v4 as uuid } from "uuid";
 
 export async function getServerSession() {
   const cookieStore = cookies();
-  const supabase = createServerClient(cookieStore);
+  const supabase = supaServer()(cookieStore);
   if (!supabase) return null;
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return null;
