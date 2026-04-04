@@ -7,12 +7,12 @@ import { usePathname } from "next/navigation";
 import { HowToUse } from "./HowToUse";
 
 function Logo() {
-  const [src, setSrc] = useState("/Logo.svg");
+  const [src, setSrc] = useState("/logo.svg");
   const [fallbackText, setFallbackText] = useState(false);
 
   if (fallbackText) {
     return (
-      <div className="inline-flex h-28 w-28 md:h-36 md:w-36 lg:h-40 lg:w-40 items-center justify-center rounded-2xl bg-white text-lg font-black uppercase text-[#121212]">
+      <div className="inline-flex h-24 w-24 items-center justify-center rounded-2xl bg-white text-lg font-black uppercase text-[#121212] md:h-28 md:w-28 lg:h-32 lg:w-32">
         PS
       </div>
     );
@@ -22,17 +22,17 @@ function Logo() {
     <Image
       src={src}
       alt="Polar Star"
-      width={200}
-      height={200}
+      width={220}
+      height={220}
       priority
       onError={() => {
-        if (src === "/Logo.svg") {
-          setSrc("/polar-star.png");
+        if (src === "/logo.svg") {
+          setSrc("/polarstar-logo.png");
         } else {
           setFallbackText(true);
         }
       }}
-      className="h-28 w-28 md:h-36 md:w-36 lg:h-40 lg:w-40 select-none object-contain"
+      className="h-24 w-24 select-none object-contain md:h-28 md:w-28 lg:h-32 lg:w-32"
     />
   );
 }
@@ -58,13 +58,16 @@ export default function Header() {
         setOpen(false);
       }
     };
+
     const onResize = () => {
       if (window.innerWidth >= 1024) {
         setOpen(false);
       }
     };
+
     window.addEventListener("keydown", onKey);
     window.addEventListener("resize", onResize);
+
     return () => {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("resize", onResize);
@@ -102,17 +105,19 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-[#121212]/95 text-white backdrop-blur supports-[backdrop-filter]:bg-[#121212]/80">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
-        <div className="grid items-center gap-4 py-4 lg:py-5 lg:grid-cols-[1fr,auto] xl:grid-cols-[1fr,auto,auto]">
-          <div className="flex min-w-0 items-start gap-4">
-            <Link href="/" className="shrink-0 relative -mt-4 md:-mt-6 z-10" aria-label="На главную">
+        <div className="grid items-center gap-4 py-4 lg:grid-cols-[1fr,auto] xl:grid-cols-[1fr,auto,auto]">
+          <div className="flex min-w-0 items-center gap-4">
+            <Link href="/" className="shrink-0" aria-label="На главную">
               <Logo />
             </Link>
+
             <div className="min-w-0 space-y-1">
-              <Link href="/">
-                <h1 className="text-[clamp(20px,2vw,32px)] font-extrabold leading-tight whitespace-normal break-words break-keep">
+              <Link href="/" className="block">
+                <h1 className="text-[clamp(24px,2.5vw,42px)] font-extrabold leading-tight uppercase whitespace-normal break-words">
                   ГЕНЕРАТОР УНИКАЛЬНЫХ ПРОДУКТОВ
                 </h1>
               </Link>
+
               <p className="text-[clamp(12px,1.2vw,18px)] leading-snug text-white/80">
                 По Методике Когнитивно-Сенсорного Маркетинга
               </p>
@@ -128,16 +133,16 @@ export default function Header() {
           <div className="hidden items-center justify-end gap-2 lg:flex">
             <HowToUse />
             <Link
-              href="/dashboard"
+              href="/analysis"
               className="rounded-lg bg-white/5 px-3 py-2 text-sm text-white transition hover:bg-white/10"
             >
-              Кабинет
+              Анализ
             </Link>
             <Link
-              href="/login"
+              href="/"
               className="rounded-lg bg-white/5 px-3 py-2 text-sm text-white transition hover:bg-white/10"
             >
-              Войти
+              Главное меню
             </Link>
           </div>
 
@@ -183,12 +188,16 @@ export default function Header() {
         id={dialogId}
         role="dialog"
         aria-modal="true"
-        className={`fixed inset-0 z-50 lg:hidden ${open ? "pointer-events-auto" : "pointer-events-none"}`}
+        className={`fixed inset-0 z-50 lg:hidden ${
+          open ? "pointer-events-auto" : "pointer-events-none"
+        }`}
       >
         <div className={overlayClasses} onClick={close} />
         <aside className={panelClasses}>
           <div className="flex items-center justify-between px-5 pb-2 pt-5">
-            <span className="text-sm font-semibold uppercase tracking-wide text-white/70">Навигация</span>
+            <span className="text-sm font-semibold uppercase tracking-wide text-white/70">
+              Навигация
+            </span>
             <button
               type="button"
               onClick={close}
@@ -198,35 +207,37 @@ export default function Header() {
               ✕
             </button>
           </div>
+
           <div className="flex flex-col gap-4 border-t border-white/10 px-5 py-6">
             <Link
               ref={firstLinkRef}
-              href="#generator"
+              href="/generator"
               onClick={close}
-              className="relative select-none text-[0.98rem] font-bold uppercase tracking-wide text-white/90 transition hover:text-white after:absolute after:-inset-x-2 after:inset-y-1 after:-z-10 after:rounded-xl after:bg-[linear-gradient(90deg,#FF5B5B_0%,#ff7b7b_100%)] after:opacity-20 hover:after:opacity-35 drop-shadow-[0_0_12px_rgba(255,91,91,0.35)] hover:drop-shadow-[0_0_18px_rgба(255,91,91,0.55)]"
+              className="relative select-none text-[0.98rem] font-bold uppercase tracking-wide text-white/90 transition hover:text-white after:absolute after:-inset-x-2 after:inset-y-1 after:-z-10 after:rounded-xl after:bg-[linear-gradient(90deg,#FF5B5B_0%,#ff7b7b_100%)] after:opacity-20 hover:after:opacity-35 drop-shadow-[0_0_12px_rgba(255,91,91,0.35)]"
             >
-              СОЗДАЙ СВОЙ УНИКАЛЬНЫЙ ПРОДУКТ ЗА 2 МИНУТЫ
+              Генератор
             </Link>
+
+            <Link
+              href="/analysis"
+              onClick={close}
+              className="rounded-lg border border-white/10 px-3.5 py-2 text-sm font-semibold text-white/85 transition hover:bg-white/10 hover:text-white"
+            >
+              Анализ
+            </Link>
+
+            <Link
+              href="/"
+              onClick={close}
+              className="rounded-lg border border-white/10 px-3.5 py-2 text-sm font-semibold text-white/85 transition hover:bg-white/10 hover:text-white"
+            >
+              Главное меню
+            </Link>
+
             <HowToUse variant="drawer" onTrigger={close} />
-            <div className="h-px bg-white/10" />
-            <Link
-              href="/dashboard"
-              onClick={close}
-              className="rounded-lg border border-white/10 px-3.5 py-2 text-sm font-semibold text-white/85 transition hover:bg-white/10 hover:text-white"
-            >
-              Кабинет
-            </Link>
-            <Link
-              href="/login"
-              onClick={close}
-              className="rounded-lg border border-white/10 px-3.5 py-2 text-sm font-semibold text-white/85 transition hover:bg-white/10 hover:text-white"
-            >
-              Войти
-            </Link>
           </div>
         </aside>
       </div>
     </header>
   );
 }
-
